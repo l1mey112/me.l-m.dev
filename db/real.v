@@ -2,7 +2,6 @@ import db.sqlite
 import strings
 import time
 
-// sets a custom table name. Default is struct name (case-sensitive)
 [table: 'posts']
 struct Post {
 	id int [primary; sql: serial]
