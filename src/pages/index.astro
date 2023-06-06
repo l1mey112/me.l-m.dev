@@ -2,13 +2,12 @@
 import Layout from '../layouts/Layout.astro';
 // import Card from '../layouts/Card.astro';
 import Post from '../layouts/Post.astro';
-import { get_posts } from '../lib/db';
+import { DB, DB_CLOSE } from '../lib/db';
+import type { PostEntry } from '../lib/db';
 import { markedHighlight } from "marked-highlight";
 import { marked } from 'marked';
 import hljs from 'highlight.js';
-import 'highlight.js/styles/arta.css'
-
-const posts = await get_posts();
+import 'highlight.js/styles/arta.css';
 
 marked.use(markedHighlight({
 	langPrefix: 'hljs language-',
@@ -36,6 +35,37 @@ function replaceMediaWithURLs(text: string) {
   });
 }
 
+console.log('getdb')
+const db = await DB();
+
+const p_search = Astro.url.searchParams.get('search');
+const p_type = Astro.url.searchParams.get('type');
+
+let query = `SELECT * FROM posts`;
+
+if (p_search || p_type) {
+  query += ` WHERE`;
+
+  if (p_search) {
+    query += ` content LIKE '%${p_search}%'`;
+  }
+
+  if (p_search && p_type) {
+    query += ` AND`;
+  }
+
+  if (p_type) {
+    query += ` post_type = '${p_type}'`;
+  }
+}
+
+const _t = performance.now()
+
+console.log('start')
+const posts = db.prepare(query).all() as PostEntry[];
+
+console.log((performance.now() - _t), "millis")
+
 // TODO: store rendered HTML?
 ---
 
@@ -57,80 +87,3 @@ function replaceMediaWithURLs(text: string) {
         background-color: #000;
 	}
 </style>
-
-{/* <Layout title="Welcome to Astro.">
-	<main>
-		<h1>Welcome to <span class="text-gradient">Astro</span></h1>
-		<p class="instructions">
-			To get started, open the directory <code>src/pages</code> in your project.<br />
-			<strong>Code Challenge:</strong> Tweak the "Welcome to Astro" message above.
-		</p>
-		<ul role="list" class="link-card-grid">
-			<Card
-				href="https://docs.astro.build/"
-				title="Documentation"
-				body="Learn how Astro works and explore the official API docs."
-			/>
-			<Card
-				href="https://astro.build/integrations/"
-				title="Integrations"
-				body="Supercharge your project with new frameworks and libraries."
-			/>
-			<Card
-				href="https://astro.build/themes/"
-				title="Themes"
-				body="Explore a galaxy of community-built starter themes."
-			/>
-			<Card
-				href="https://astro.build/chat/"
-				title="Community"
-				body="Come say hi to our amazing Discord community. ❤️"
-			/>
-		</ul>
-	</main>
-</Layout>
-
-<style>
-	main {
-		margin: auto;
-		padding: 1.5rem;
-		max-width: 60ch;
-	}
-	h1 {
-		font-size: 3rem;
-		font-weight: 800;
-		margin: 0;
-	}
-	.text-gradient {
-		background-image: var(--accent-gradient);
-		-webkit-background-clip: text;
-		-webkit-text-fill-color: transparent;
-		background-size: 400%;
-		background-position: 0%;
-	}
-	.instructions {
-		line-height: 1.6;
-		margin: 1rem 0;
-		border: 1px solid rgba(var(--accent), 25%);
-		background-color: white;
-		padding: 1rem;
-		border-radius: 0.4rem;
-	}
-	.instructions code {
-		font-size: 0.875em;
-		font-weight: bold;
-		background: rgba(var(--accent), 12%);
-		color: rgb(var(--accent));
-		border-radius: 4px;
-		padding: 0.3em 0.45em;
-	}
-	.instructions strong {
-		color: rgb(var(--accent));
-	}
-	.link-card-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(24ch, 1fr));
-		gap: 1rem;
-		padding: 0;
-	}
-</style> */}

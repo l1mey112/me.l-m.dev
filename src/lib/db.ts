@@ -9,9 +9,16 @@ let _db: Database | null = null;
 export async function DB(): Promise<Database> {
 	if (!_db) {
 		_db = sqlite('data.sqlite')
-		_db.pragma('journal_mode = WAL');
+		// _db.pragma('journal_mode = WAL');
 	}
 	return _db;
+}
+
+export function DB_CLOSE() {
+	if (_db) {
+		_db.close();
+		_db = null;
+	}
 }
 
 export interface PostEntry {
