@@ -64,6 +64,6 @@ for (const doc of results.documents) {
 	// noderedis:animals:3: Rover, 9 years old.
 	// noderedis:animals:4: Fido, 7 years old.
 	console.log(`${doc.id}: ${doc.value.content}`);
-  }
+}
 
 await redis_client.quit();
