@@ -1,7 +1,7 @@
 import db.sqlite
 import time
 import regex
-import markdown
+import mymarkdown
 
 // sets a custom table name. Default is struct name (case-sensitive)
 [table: 'posts']
@@ -15,7 +15,6 @@ mut:
 }
 
 fn preprocess(mut media_regex regex.RE, text string) string {
-
 	ntext := media_regex.replace_by_fn(text, fn (_ regex.RE, text string, b1 int, b2 int) string {
 		t := text[b1..b2]
 
@@ -25,7 +24,7 @@ fn preprocess(mut media_regex regex.RE, text string) string {
 		return '\n<img loading="lazy" src="${t}">\n'
 	})
 
-	return markdown.to_html(ntext)
+	return mymarkdown.to_html(ntext)
 }
 
 fn main() {
@@ -38,8 +37,9 @@ fn main() {
 		select from Post
 	}!
 
-	println(posts[1].content)
-	v := preprocess(mut media_regex, posts[1].content)
-
-	println(v)
+	for p in posts {
+		v := preprocess(mut media_regex, p.content)
+		println(v)
+		println('---------------------')
+	}
 }
