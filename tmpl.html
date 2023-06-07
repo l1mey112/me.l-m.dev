@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Document</title>
+</head>
+<body>
+
+@for post in posts
+<article>
+	<header>
+		<time datetime="@{post.created_at.format_rfc3339()}">@{post.created_at}</time>
+		<!-- <ul>
+			<li>arg</li>
+			<li>arg2</li>
+		</ul> -->
+	</header>
+	<main>
+		@{app.preprocess(post.content)}
+	</main>
+</article>
+@end
+
+<style>
+	html {
+		background-color: #000;
+		font-family: 'Courier New', Courier, monospace;
+		background-color: #F6F6F6;
+	}
+	body {
+		max-width: 50rem;
+		word-wrap: break-word;
+		margin-left: auto;
+		margin-right: auto;
+		color: #b3b8c3;
+	}
+	main {
+		word-wrap: break-word;
+	}
+	article {
+		background-color: #0c090a;
+		border: solid 2px #1e1e1e;
+		margin: 1em;
+		padding: 1em;
+	}
+	article:hover {
+		border-color: #771f11;
+		border-style: dotted;
+    }
+	header {
+		padding: 1em;
+	}
+	time {
+		color: grey;
+		display: inline-block;
+    }
+	code {
+		font-family: Menlo, Monaco, Lucida Console, Liberation Mono, DejaVu Sans Mono,
+			Bitstream Vera Sans Mono, Courier New, monospace;
+	}
+	img, video {
+		max-width: 100%;
+		max-height: 500px;
+	}
+	br {
+		display: block;
+		margin-top: 0.5em;
+	}
+</style>
+
+</body>
+</html>
