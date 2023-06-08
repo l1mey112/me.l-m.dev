@@ -70,11 +70,11 @@
 
 <div class="cnt">
 <pre>
-▄▄▌    • ▌ ▄ ·.  | 
-██•    ·██ ▐███▪ | 
-██ ▪   ▐█ ▌▐▌▐█· | 
-▐█▌ ▄  ██ ██▌▐█▌ | 
-.▀▀▀   ▀▀  █▪▀▀▀ | 
+▄▄▌    • ▌ ▄ ·. 
+██•    ·██ ▐███▪
+██ ▪   ▐█ ▌▐▌▐█·
+▐█▌ ▄  ██ ██▌▐█▌
+.▀▀▀   ▀▀  █▪▀▀▀
 </pre>
 <div class="cc">
 <p>
@@ -86,7 +86,9 @@
 
 <hr>
 
-
+<p>
+@{app.fmt_tag(all_tags_fmt)}
+</p>
 
 <hr>
 
@@ -95,7 +97,7 @@
 	<header>
 		<time datetime="@{post.created_at.format_rfc3339()}">@{post.created_at}</time>
 		<a href="/#@{post.created_at.unix}">#@{post.created_at.unix}</a>
-		@{app.fmt_tag(post.tags)}
+		@{app.fmt_tag(post.tags.split(' '))}
 	</header>
 	<main>
 		@{app.preprocess(post.content)}

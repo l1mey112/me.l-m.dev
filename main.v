@@ -25,17 +25,20 @@ mut:
 	prerendered_home string
 }
 
-fn (app &App) fmt_tag(tags string) string {
-	if tags == '' {
-		return tags
+fn (app &App) fmt_tag(tags []string) string {
+	if tags.len == 0 {
+		return ''
 	}
 
 	mut sb := strings.new_builder(32)
 
 	sb.write_string('[ ')
-	for tag in tags.split(' ') {
+	for idx, tag in tags {
 		sb.write_string(tag)
 		sb.write_u8(` `)
+		if idx + 1 < tags.len {
+			sb.write_string('| ')
+		}
 	}
 	sb.write_string(']')
 
@@ -55,11 +58,45 @@ fn (mut app App) preprocess(text string) string {
 	return mymarkdown.to_html(ntext)
 }
 
+const query_all_tags = "WITH split(tag, tags_remaining) AS (
+  -- Initial query
+  SELECT 
+    '',
+    tags || ' ' -- Appending tags column data to handle the first tag
+  FROM posts
+  -- Recursive query
+  UNION ALL
+  SELECT
+    trim(substr(tags_remaining, 0, instr(tags_remaining, ' '))),
+    substr(tags_remaining, instr(tags_remaining, ' ') + 1)
+  FROM split
+  WHERE tags_remaining != ''
+)
+SELECT tag, COUNT(*) AS tag_count
+FROM split
+WHERE tag != ''
+GROUP BY tag;"
+
+struct Tag {
+	tag string
+	count int
+}
+
 fn (mut app App) rerender()! {
 	posts_total := sql app.db {
 		select count from Post
 	}!
-	
+
+	tag_rows, tag_ret := app.db.exec(query_all_tags)
+	if sqlite.is_error(tag_ret) {
+		return error('error: ${tag_ret}')
+	}
+
+	mut all_tags := tag_rows.map(Tag{it.vals[0], it.vals[1].int()})
+	all_tags.sort(a.count > b.count)
+
+	all_tags_fmt := all_tags.map("${it.tag}: ${it.count}")
+
 	posts := sql app.db {
 		select from Post
 	}!
