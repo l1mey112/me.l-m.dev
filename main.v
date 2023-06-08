@@ -63,7 +63,7 @@ fn write_all(mut res phttp.Response, v string) {
 	}
 }
 
-const terminus = $embed_file('Terminus.woff2').to_string()
+const terminus = $embed_file('TerminusTTF.woff2').to_string()
 
 fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 	mut app := unsafe { &App(data) }
@@ -74,7 +74,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 			res.header_date()
 			res.html()
 			write_all(mut res, app.prerendered_home)
-		} else if phttp.cmp(req.path, '/font.woff2') {
+		} else if phttp.cmp(req.path, '/TerminusTTF.woff2') {
 			res.http_ok()
 			res.header_date()
 			res.write_string('Content-Type: font/woff2\r\n')
@@ -94,6 +94,11 @@ fn main() {
 		media_regex: regex.regex_opt(r'https?://\S+\.(?:(png)|(jpe?g)|(gif)|(svg)|(webp)|(mp4)|(webm))')!
 		db: sqlite.connect("data.sqlite")!
 	}
+
+	/* C.atexit(fn [mut app] () {
+		app.db.close() or { panic(err) }
+		println('\natexit: goodbye')
+	}) */
 
 	os.signal_opt(.int, fn [mut app] (_ os.Signal) {
 		app.db.close() or { panic(err) }

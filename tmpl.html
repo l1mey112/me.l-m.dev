@@ -8,16 +8,13 @@
 </head>
 <body>
 <style>
-	/* @font-face {
-		font-family: 'Terminus';
-		src: url('font.woff2') format('woff2');
-	} */
-	html {
-		/* font-family: 'Courier New', Courier, monospace; */
-		font-family: 'Terminus';
-		/* font-family: Inter, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif; */
-		font-size: 22px;
-		text-rendering: geometricPrecision;
+	@font-face {
+		font-family: 'Terminus (TTF)';
+		src: url('TerminusTTF.woff2') format('woff2');
+	}
+	html, code {
+		font-family: 'Terminus (TTF)';
+		font-size: 18px;
 	}
 	body {
 		background-color: #2D2E2F;
@@ -49,10 +46,6 @@
 		color: grey;
 		display: inline-block;
     }
-	code {
-		font-family: Menlo, Monaco, Lucida Console, Liberation Mono, DejaVu Sans Mono,
-			Bitstream Vera Sans Mono, Courier New, monospace;
-	}
 	img, video {
 		max-width: 100%;
 		max-height: 500px;
