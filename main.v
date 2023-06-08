@@ -6,6 +6,7 @@ import mypicoev as picoev
 import mypicohttpparser as phttp
 import os
 import strings
+import compress.gzip
 
 [table: 'posts']
 struct Post {
@@ -82,15 +83,44 @@ fn write_all(mut res phttp.Response, v string) {
 
 const terminus = $embed_file('TerminusTTF.woff2').to_string()
 
+fn mcmp(a &char, len int, b string) bool {
+	if len != b.len {
+		return false
+	}
+
+	return unsafe { C.memcmp(a, b.str, b.len) == 0 }
+}
+
 fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 	mut app := unsafe { &App(data) }
+	mut accepts_gzip := false
+
+	// check for gzip
+	for idx in 0..req.num_headers {
+		hdr := req.headers[idx]
+		if mcmp(hdr.name, hdr.name_len, 'Accept-Encoding') {
+			if unsafe { (&u8(hdr.value)).vstring_with_len(hdr.value_len).contains('gzip') } {
+				accepts_gzip = true
+			}
+			break
+		}
+	}
 
 	if phttp.cmpn(req.method, 'GET ', 4) {
 		if phttp.cmp(req.path, '/') {
 			res.http_ok()
 			res.header_date()
 			res.html()
-			write_all(mut res, app.prerendered_home)
+			if accepts_gzip {
+				// completely cuts the HTML size in HALF!
+				// TODO: this should be cached, it also creates unneeded copies
+
+				res.write_string('Content-Encoding: gzip\r\n')
+				val := gzip.compress(app.prerendered_home.bytes()) or { panic(err) }
+				write_all(mut res, val.bytestr())
+			} else {
+				write_all(mut res, app.prerendered_home)
+			}
 		} else if phttp.cmp(req.path, '/TerminusTTF.woff2') {
 			res.http_ok()
 			res.header_date()
