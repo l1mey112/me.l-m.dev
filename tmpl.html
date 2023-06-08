@@ -17,7 +17,7 @@
 		font-size: 18px;
 	}
 	body {
-		background-color: #2D2E2F;
+		background-color: #1d1e1e;
 		max-width: 40rem;
 		word-wrap: break-word;
 		margin-left: auto;
@@ -51,7 +51,44 @@
 		display: block;
 		margin-top: 0.5em;
 	}
+	.cnt {
+		display: flex;
+        justify-content: space-between;
+		color: #b3b8c3;
+	}
+	.cc {
+		flex: 1;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+	}
+	a {
+		color: #FF0000;
+	}
 </style>
+
+
+<div class="cnt">
+<pre>
+▄▄▌    • ▌ ▄ ·.  | 
+██•    ·██ ▐███▪ | 
+██ ▪   ▐█ ▌▐▌▐█· | 
+▐█▌ ▄  ██ ██▌▐█▌ | 
+.▀▀▀   ▀▀  █▪▀▀▀ | 
+</pre>
+<div class="cc">
+<p>
+	<a href="https://l-m.dev">https://l-m.dev</a> - © l-m.dev 2023<br>
+	Welcome! - @{posts_total} total posts.
+</p>
+</div>
+</div>
+
+<hr>
+
+
+
+<hr>
 
 @for post in posts
 <article id="@{post.created_at.unix}">

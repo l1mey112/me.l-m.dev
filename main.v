@@ -56,6 +56,10 @@ fn (mut app App) preprocess(text string) string {
 }
 
 fn (mut app App) rerender()! {
+	posts_total := sql app.db {
+		select count from Post
+	}!
+	
 	posts := sql app.db {
 		select from Post
 	}!
