@@ -5,12 +5,12 @@ import mymarkdown
 import mypicoev as picoev
 import mypicohttpparser as phttp
 import os
+import strings
 
 [table: 'posts']
 struct Post {
 	id int [primary; sql: serial]
 	created_at time.Time
-	post_type string
 	tags string // space separated
 mut:
 	content string
@@ -22,6 +22,23 @@ mut:
 	media_regex regex.RE
 	db sqlite.DB
 	prerendered_home string
+}
+
+fn (app &App) fmt_tag(tags string) string {
+	if tags == '' {
+		return tags
+	}
+
+	mut sb := strings.new_builder(32)
+
+	sb.write_string('[ ')
+	for tag in tags.split(' ') {
+		sb.write_string(tag)
+		sb.write_u8(` `)
+	}
+	sb.write_string(']')
+
+	return sb.str()
 }
 
 fn (mut app App) preprocess(text string) string {

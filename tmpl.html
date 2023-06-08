@@ -40,12 +40,9 @@
 		border-style: dotted;
     }
 	header {
+		color: grey;
 		padding: 1em;
 	}
-	time {
-		color: grey;
-		display: inline-block;
-    }
 	img, video {
 		max-width: 100%;
 		max-height: 500px;
@@ -57,13 +54,11 @@
 </style>
 
 @for post in posts
-<article>
+<article id="@{post.created_at.unix}">
 	<header>
 		<time datetime="@{post.created_at.format_rfc3339()}">@{post.created_at}</time>
-		<!-- <ul>
-			<li>arg</li>
-			<li>arg2</li>
-		</ul> -->
+		<a href="/#@{post.created_at.unix}">#@{post.created_at.unix}</a>
+		@{app.fmt_tag(post.tags)}
 	</header>
 	<main>
 		@{app.preprocess(post.content)}
