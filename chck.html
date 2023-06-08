@@ -1,0 +1,30 @@
+<style>
+	/* Hide the default checkbox */
+	input[type="checkbox"] {
+	  display: none;
+	}
+  
+	/* Create custom checkbox styles */
+	.checkbox-label {
+	  display: inline-block;
+	  position: relative;
+	  cursor: pointer;
+	}
+  
+	/* Style the checkbox when checked */
+	.checkbox-label input:checked + span:before {
+	  content: '[x]';
+	}
+	.checkbox-label input:not(:checked) + span:before {
+	  content: '[ ]';
+	}
+  </style>
+
+  <form action="">
+  
+	<label class="checkbox-label">
+		<input type="checkbox">
+		<span></span> Checkbox Label
+	  </label>
+
+</form>

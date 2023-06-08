@@ -135,6 +135,7 @@ fn mcmp(a &char, len int, b string) bool {
 fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 	mut app := unsafe { &App(data) }
 	mut accepts_gzip := false
+	mut is_authed := false
 
 	// check for gzip
 	for idx in 0..req.num_headers {
@@ -146,6 +147,8 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 			break
 		}
 	}
+
+	_ = is_authed
 
 	if phttp.cmpn(req.method, 'GET ', 4) {
 		if phttp.cmp(req.path, '/') {
