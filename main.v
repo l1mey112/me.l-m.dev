@@ -47,7 +47,23 @@ fn (mut app App) rerender()! {
 	app.prerendered_home = $tmpl('tmpl.html')
 }
 
-// TODO: no need for changing picoev max_{write/read}, we aren't serving images.
+fn write_all(mut res phttp.Response, v string) {
+	res.write_string('Content-Length: ')
+	unsafe {
+		res.buf += C.u64toa(&char(res.buf), v.len)
+	}
+	res.write_string('\r\n\r\n')
+
+	if (i64(res.buf) - i64(res.buf_start) + i64(v.len)) >= 8192 {
+		res.end()
+		C.write(res.fd, v.str, v.len)
+	} else {
+		res.write_string(v)
+		res.end()
+	}
+}
+
+const terminus = $embed_file('Terminus.woff2').to_string()
 
 fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 	mut app := unsafe { &App(data) }
@@ -57,20 +73,12 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 			res.http_ok()
 			res.header_date()
 			res.html()
-
-			res.write_string('Content-Length: ')
-			unsafe {
-				res.buf += C.u64toa(&char(res.buf), app.prerendered_home.len)
-			}
-			res.write_string('\r\n\r\n')
-
-			if (i64(res.buf) - i64(res.buf_start) + i64(app.prerendered_home.len)) >= 8192 {
-				res.end()
-				C.write(res.fd, app.prerendered_home.str, app.prerendered_home.len)
-			} else {
-				res.write_string(app.prerendered_home)
-				res.end()
-			}
+			write_all(mut res, app.prerendered_home)
+		} else if phttp.cmp(req.path, '/font.woff2') {
+			res.http_ok()
+			res.header_date()
+			res.write_string('Content-Type: font/woff2\r\n')
+			write_all(mut res, terminus)
 		} else {
 			res.http_404()
 			res.end()
