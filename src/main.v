@@ -9,6 +9,7 @@ import net.urllib
 import time
 
 const cache_max = 8
+const cache_min_gzip = 1500 // will rarely get hit
 
 [heap]
 struct App {
@@ -22,13 +23,27 @@ fn (mut app App) invalidate_cache() {
 	unsafe { app.cache.len = 0 }
 }
 
-fn (mut app App) get_cache(query Query) ?string {
+// return render, use_gzip
+fn (mut app App) get_cache(query Query, use_gzip bool) ?(string, bool) {
 	// get cache value, increment pop
+	// if gzip compression is needed, generate it on demand and cache result
 
 	for mut c in app.cache {
 		if c.query == query {
 			c.pop++
-			return c.render
+
+			// only gzip larger than 1500 bytes
+			if use_gzip && c.render.len > cache_min_gzip {
+				if render_gzip := c.render_gzip {
+					return render_gzip, true
+				}
+				if val := gzip.compress(c.render.bytes()) {
+					render_gzip := val.bytestr()
+					c.render_gzip = render_gzip
+					return render_gzip, true
+				}
+			}
+			return c.render, false
 		}
 	}
 
@@ -73,6 +88,7 @@ struct CacheEntry {
 	query Query
 	render string
 mut:
+	render_gzip ?string
 	pop u64
 }
 
@@ -98,7 +114,7 @@ fn (app &App) fmt_tag(tags []string) string {
 
 fn (app &App) dbg_log() {
 	for idx, c in app.cache {
-		eprintln("${idx}: (${c.pop}) '${c.query.search}' > ${c.query.tags}")
+		eprintln("${idx}: (gzip: ${c.render_gzip != none}) (${c.pop}) '${c.query.search}' > ${c.query.tags}")
 	}
 }
 
@@ -155,7 +171,7 @@ fn sqlsearch(a string) string {
 	return a.replace_each(sqlsearch_replace)
 }
 
-fn (mut app App) serve_home(req string, mut res phttp.Response) {
+fn (mut app App) serve_home(req string, use_gzip bool, mut res phttp.Response) {
 	// 1. handle home url
 	// 2. parse search queries
 	// 3. cache lookup
@@ -167,11 +183,14 @@ fn (mut app App) serve_home(req string, mut res phttp.Response) {
 
 	query := get_query(req)
 
-	if render := app.get_cache(query) {
+	if render, is_gzip := app.get_cache(query, use_gzip) {
 		res.http_ok()
 		res.header_date()
 		res.html()
-		write_all(mut res, render) // TODO: handle gzip
+		if is_gzip {
+			res.write_string('Content-Encoding: gzip\r\n')
+		}
+		write_all(mut res, render)
 		return
 	}
 	eprintln("cache MISS: ${query}")
@@ -226,22 +245,24 @@ fn (mut app App) serve_home(req string, mut res phttp.Response) {
 		select count from Post
 	} or { panic(err) }
 
-	render := $tmpl('tmpl.html')
-	app.enter_cache(query, render)
+	app.enter_cache(query, $tmpl('tmpl.html'))
 
-	res.http_ok()
-	res.header_date()
-	res.html()
-	write_all(mut res, render) // TODO: handle gzip
-
-	// eprintln(posts)
-	// eprintln(all_tags)
-	// eprintln(db_query)
+	if render, is_gzip := app.get_cache(query, use_gzip) {
+		res.http_ok()
+		res.header_date()
+		res.html()
+		if is_gzip {
+			res.write_string('Content-Encoding: gzip\r\n')
+		}
+		write_all(mut res, render)
+		return
+	}
+	panic("unreachable")
 }
 
 fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 	mut app := unsafe { &App(data) }
-	mut accepts_gzip := false
+	mut use_gzip := false
 	mut is_authed := false
 
 	// check for gzip
@@ -249,7 +270,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 		hdr := req.headers[idx]
 		if mcmp(hdr.name, hdr.name_len, 'Accept-Encoding') {
 			if unsafe { (&u8(hdr.value)).vstring_with_len(hdr.value_len).contains('gzip') } {
-				accepts_gzip = true
+				use_gzip = true
 			}
 			break
 		}
@@ -259,21 +280,8 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 
 	if phttp.cmpn(req.method, 'GET ', 4) {
 		if phttp.cmp(req.path, '/') || phttp.cmpn(req.path, '/?', 2) {
-			res.http_ok()
-			res.header_date()
-			res.html()
-			app.serve_home(req.path, mut res)
+			app.serve_home(req.path, use_gzip, mut res)
 			app.dbg_log()
-			/* if accepts_gzip {
-				// completely cuts the HTML size in HALF!
-				// TODO: this should be cached, it also creates unneeded copies
-
-				res.write_string('Content-Encoding: gzip\r\n')
-				val := gzip.compress(app.prerendered_home.bytes()) or { panic(err) }
-				write_all(mut res, val.bytestr())
-			} else {
-				write_all(mut res, app.prerendered_home)
-			} */
 		} else if phttp.cmp(req.path, '/TerminusTTF.woff2') {
 			res.http_ok()
 			res.header_date()
