@@ -95,7 +95,7 @@ fn (mut app App) rerender()! {
 	mut all_tags := tag_rows.map(Tag{it.vals[0], it.vals[1].int()})
 	all_tags.sort(a.count > b.count)
 
-	all_tags_fmt := all_tags.map("${it.tag}: ${it.count}")
+	//all_tags_fmt := all_tags.map("${it.tag}: ${it.count}")
 
 	posts := sql app.db {
 		select from Post

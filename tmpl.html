@@ -65,7 +65,7 @@
 	a {
 		color: #FF0000;
 	}
-	input[type="checkbox"] {
+	/* input[type="checkbox"] {
 		display: none;
 	}
 	.cb {
@@ -78,6 +78,18 @@
 	}
 	.cb input:not(:checked) + span:before {
 		content: '[ ]';
+	} */
+	label {
+		cursor: pointer;
+	}
+	form input[type=checkbox] + label:before {
+		content: '[ ] ';
+	}
+	form input[type=checkbox]:checked + label:before {
+		content: '[x] ';
+	}
+	input[type=checkbox] {
+		display:none;
 	}
 </style>
 
@@ -100,26 +112,21 @@ Welcome! - @{posts_total} total posts.
 
 </div>
 
-<hr>
+<hr color="gray">
 
 <form action="/" method="GET">
 @for tag in all_tags
 
-<label class="cb" for="tag_@{tag.tag}">
-	<input type="checkbox" name="tag_@{tag.tag}">
-	<span></span> [ @{tag.tag}: @{tag.count} ]
-</label>
+<input type="checkbox" id="tag_@{tag.tag}" name="tag_@{tag.tag}">
+<label for="tag_@{tag.tag}">@{tag.tag}: @{tag.count}</label>
 
 @end
-<!-- <input type="search" name="search">
-<input type="submit" value="Send GET Request"> -->
 </form>
 
-<p>
-@{app.fmt_tag(all_tags_fmt)}
-</p>
+<!-- <input type="search" name="search">
+<input type="submit" value="Send GET Request"> -->
 
-<hr>
+<hr color="gray">
 
 @for post in posts
 <article id="@{post.created_at.unix}">
