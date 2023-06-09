@@ -172,7 +172,7 @@ fn sqlsearch(a string) string {
 	return a.replace_each(sqlsearch_replace)
 }
 
-fn (mut app App) serve_home(req string, use_gzip bool, mut res phttp.Response) {
+fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res phttp.Response) {
 	// 1. handle home url
 	// 2. parse search queries
 	// 3. cache lookup
@@ -184,17 +184,21 @@ fn (mut app App) serve_home(req string, use_gzip bool, mut res phttp.Response) {
 
 	query := get_query(req)
 
-	if render, is_gzip := app.get_cache(query, use_gzip) {
-		res.http_ok()
-		res.header_date()
-		res.html()
-		if is_gzip {
-			res.write_string('Content-Encoding: gzip\r\n')
+	// always render new if authed, never cache authed pages
+
+	if !is_authed {
+		if render, is_gzip := app.get_cache(query, use_gzip) {
+			res.http_ok()
+			res.header_date()
+			res.html()
+			if is_gzip {
+				res.write_string('Content-Encoding: gzip\r\n')
+			}
+			write_all(mut res, render)
+			return
 		}
-		write_all(mut res, render)
-		return
+		eprintln("cache MISS: ${query}")
 	}
-	eprintln("cache MISS: ${query}")
 
 	mut db_query := "select * from posts"
 
@@ -244,27 +248,42 @@ fn (mut app App) serve_home(req string, use_gzip bool, mut res phttp.Response) {
 
 	posts_total := sql app.db {
 		select count from Post
-	} or { panic(err) }
+	} or { panic("unreachable") }
 
-	app.enter_cache(query, $tmpl('tmpl.html'))
+	// do not cache authed pages
 
-	if render, is_gzip := app.get_cache(query, use_gzip) {
-		res.http_ok()
-		res.header_date()
-		res.html()
-		if is_gzip {
-			res.write_string('Content-Encoding: gzip\r\n')
+	mut tmpl := $tmpl('tmpl.html')
+
+	res.http_ok()
+	res.header_date()
+	res.html()
+	if !is_authed {
+		app.enter_cache(query, tmpl)
+
+		if render, is_gzip := app.get_cache(query, use_gzip) {
+			if is_gzip {
+				res.write_string('Content-Encoding: gzip\r\n')
+			}
+			write_all(mut res, render)
 		}
-		write_all(mut res, render)
-		return
+	} else {
+		// compress on the go, this cannot be cached
+
+		if use_gzip && tmpl.len > cache_min_gzip {
+			if val := gzip.compress(tmpl.bytes()) {
+				tmpl = val.bytestr()
+				res.write_string('Content-Encoding: gzip\r\n')
+			}
+		}
+
+		write_all(mut res, tmpl)
 	}
-	panic("unreachable")
 }
 
 fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 	mut app := unsafe { &App(data) }
 	mut use_gzip := false
-	mut is_authed := false
+	mut is_authed := true // TODO: verify!!
 
 	// check for gzip
 	for idx in 0..req.num_headers {
@@ -281,7 +300,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 
 	if phttp.cmpn(req.method, 'GET ', 4) {
 		if phttp.cmp(req.path, '/') || phttp.cmpn(req.path, '/?', 2) {
-			app.serve_home(req.path, use_gzip, mut res)
+			app.serve_home(req.path, is_authed, use_gzip, mut res)
 			app.dbg_log()
 		} else if phttp.cmp(req.path, '/TerminusTTF.woff2') {
 			res.http_ok()

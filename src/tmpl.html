@@ -127,6 +127,16 @@ Welcome! - @{posts_total} total posts.
 
 <hr color="gray">
 
+@if is_authed
+
+<h1>welcome</h1>
+
+<!-- enter a textarea here, post things -->
+
+<hr color="gray">
+
+@end
+
 @for post in posts
 <article id="@{post.created_at.unix}">
 	<header>
