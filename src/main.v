@@ -181,6 +181,24 @@ fn (mut app App) serve_home(req string, mut res phttp.Response) {
 	if query.search != "" {
 		db_query += " where (content glob '*${sqlsearch(query.search)}*' collate nocase)"
 	}
+	if query.tags.len != 0 {
+		db_query += if query.search != "" {
+			" and ("
+		} else {
+			" where ("
+		}
+
+		for idx, t in query.tags {
+			tag := t.replace_each(['_', '\\_', '%', '\\%'])
+
+			db_query += "tags like '%${tag}%' escape '\\'"
+			if idx + 1 < query.tags.len {
+				db_query += " or "
+			} else {
+				db_query += ")"
+			}
+		}
+	}
 
 	posts := app.raw_query(db_query) or {
 		eprintln("${time.now()}: ${err}")
