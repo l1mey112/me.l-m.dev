@@ -26,8 +26,10 @@ fn main() {
 
 	// row, ret := db.exec('select * from posts where content glob "*wasm*"')
 
+	// nocase for content
+	// then tags, enforce lowercase
 	row := raw_query(db, "select * from posts 
-		where (content glob '**')
+		where (content glob '**' collate nocase)
 		and (tags like '%3d%' or tags like '%threejs%' or tags like '%cs%');")!
 
 	println(row.first())

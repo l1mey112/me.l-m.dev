@@ -5,8 +5,8 @@ import mypicohttpparser as phttp
 import os
 import strings
 import compress.gzip
-import net.http
 import net.urllib
+import time
 
 [heap]
 struct App {
@@ -61,7 +61,7 @@ fn get_query(req string) Query {
 		key := urllib.query_unescape(kv[0]) or { continue }
 
 		if key.starts_with('tag_') {
-			query.tags << key[4..]
+			query.tags << key[4..].to_lower()
 		} else if key == 'search' {
 			val := urllib.query_unescape(kv[1]) or { continue }
 			query.search = val
@@ -71,7 +71,21 @@ fn get_query(req string) Query {
 	return query
 }
 
-fn (mut app App) serve_home(req string, mut res phttp.Response)! {
+fn (app &App) raw_query(query string) ![]sqlite.Row {
+	rows, ret := app.db.exec(query)
+
+	if sqlite.is_error(ret) {
+		return app.db.error_message(ret, query)
+	}
+
+	return rows
+}
+
+fn sqlescape(a string) string {
+	return a.replace("'", "''") // sqlite
+}
+
+fn (mut app App) serve_home(req string, mut res phttp.Response) {
 	// 1. handle home url
 	// 2. parse search queries
 	// 3. cache lookup
@@ -82,6 +96,38 @@ fn (mut app App) serve_home(req string, mut res phttp.Response)! {
 	// \-- return
 
 	query := get_query(req)
+
+	mut db_query := "select * from posts"
+
+	if query.search != "" {
+		db_query += " where (content glob '*${sqlescape(query.search)}*' collate nocase)"
+	}
+
+	posts := app.raw_query(db_query) or {
+		eprintln("${time.now()}: ${err}")
+		res.http_500()
+		res.end()
+		return
+	}.map(Post{
+		id: it.vals[0].int()
+		created_at: time.unix(it.vals[1].i64())
+		tags: it.vals[2]
+		content: it.vals[3]
+	})
+
+	tag_rows := app.raw_query(query_all_tags) or {
+		eprintln("${time.now()}: ${err}")
+		res.http_500()
+		res.end()
+		return
+	}
+
+	mut all_tags := tag_rows.map(Tag{it.vals[0], it.vals[1].int()})
+	all_tags.sort(a.count > b.count)
+
+	eprintln(posts)
+	eprintln(all_tags)
+	eprintln(db_query)
 }
 
 fn (mut app App) rerender()! {
@@ -128,6 +174,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 
 	if phttp.cmpn(req.method, 'GET ', 4) {
 		if phttp.cmp(req.path, '/') {
+			app.serve_home(req.path, mut res)
 			res.http_ok()
 			res.header_date()
 			res.html()
@@ -142,7 +189,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 				write_all(mut res, app.prerendered_home)
 			}
 		} else if phttp.cmpn(req.path, '/?', 2) {
-			println(http.parse_form(req.path[2..]))
+			app.serve_home(req.path, mut res)
 			res.http_404()
 			res.end()
 		} else if phttp.cmp(req.path, '/TerminusTTF.woff2') {
