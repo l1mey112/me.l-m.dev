@@ -85,6 +85,9 @@
 	input:focus {
 		outline: none;
 	}
+	input[type=submit] {
+		display: none;
+	}
 </style>
 
 <div class="cnt">
@@ -114,8 +117,12 @@ Welcome! - @{posts_total} total posts.
 	<label for="tag_@{tag.tag}">@{tag.tag}: <strong>@{tag.count}</strong></label>
 @end
 <br>
-	<input type="search" name="search">
-	<input type="submit" value="Send GET Request">
+	<div style="text-align: right;">
+		<input type="search" name="search">
+		<label>
+			<input type="submit"> [ go ]
+		</label>
+	</div>
 </form>
 
 <hr color="gray">
