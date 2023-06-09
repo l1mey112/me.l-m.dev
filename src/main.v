@@ -20,7 +20,8 @@ mut:
 }
 
 fn (mut app App) invalidate_cache() {
-	unsafe { app.cache.len = 0 }
+	// unsafe { app.cache.len = 0 }
+	app.cache = []CacheEntry{cap: cache_max} // force GC to collect old ptrs
 }
 
 // return render, use_gzip
