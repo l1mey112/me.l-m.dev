@@ -1,5 +1,4 @@
 import db.sqlite
-import time
 import regex
 import mypicoev as picoev
 import mypicohttpparser as phttp
@@ -7,6 +6,7 @@ import os
 import strings
 import compress.gzip
 import net.http
+import net.urllib
 
 [heap]
 struct App {
@@ -34,6 +34,54 @@ fn (app &App) fmt_tag(tags []string) string {
 	sb.write_string(']')
 
 	return sb.str()
+}
+
+struct Query {
+mut:
+	search string
+	tags []string
+}
+
+fn get_query(req string) Query {
+	// assert req == '/' || req.match_blob('/?*')
+
+	mut query := Query{}
+
+	if req.len == 1 {
+		return query
+	}
+
+	words := req[2..].split('&')
+
+	for word in words {
+		kv := word.split_nth('=', 2)
+		if kv.len != 2 {
+			continue
+		}
+		key := urllib.query_unescape(kv[0]) or { continue }
+
+		if key.starts_with('tag_') {
+			query.tags << key[4..]
+		} else if key == 'search' {
+			val := urllib.query_unescape(kv[1]) or { continue }
+			query.search = val
+		}
+	}
+
+	return query
+}
+
+fn (mut app App) serve_home(req string, mut res phttp.Response)! {
+	// 1. handle home url
+	// 2. parse search queries
+	// 3. cache lookup
+	// \-- return
+	// |
+	// 4. access database and rerender
+	// 5. enter into popularity cache
+	// \-- return
+
+	query := get_query(req)
 }
 
 fn (mut app App) rerender()! {
