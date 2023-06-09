@@ -7,6 +7,7 @@ import mypicohttpparser as phttp
 import os
 import strings
 import compress.gzip
+import net.http
 
 [table: 'posts']
 struct Post {
@@ -165,6 +166,10 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 			} else {
 				write_all(mut res, app.prerendered_home)
 			}
+		} else if phttp.cmpn(req.path, '/?', 2) {
+			println(http.parse_form(req.path[2..]))
+			res.http_404()
+			res.end()
 		} else if phttp.cmp(req.path, '/TerminusTTF.woff2') {
 			res.http_ok()
 			res.header_date()
