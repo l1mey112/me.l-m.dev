@@ -81,8 +81,18 @@ fn (app &App) raw_query(query string) ![]sqlite.Row {
 	return rows
 }
 
-fn sqlescape(a string) string {
-	return a.replace("'", "''") // sqlite
+const sqlsearch_replace = [
+	"\t" "*"
+	"\n" "*"
+	"\v" "*"
+	"\f" "*"
+	"\r" "*"
+	" ", "*"
+	"'", "''" // sqlescape
+]
+
+fn sqlsearch(a string) string {
+	return a.replace_each(sqlsearch_replace)
 }
 
 fn (mut app App) serve_home(req string, mut res phttp.Response) {
@@ -100,7 +110,7 @@ fn (mut app App) serve_home(req string, mut res phttp.Response) {
 	mut db_query := "select * from posts"
 
 	if query.search != "" {
-		db_query += " where (content glob '*${sqlescape(query.search)}*' collate nocase)"
+		db_query += " where (content glob '*${sqlsearch(query.search)}*' collate nocase)"
 	}
 
 	posts := app.raw_query(db_query) or {
