@@ -12,7 +12,7 @@
 		font-family: 'Terminus (TTF)';
 		src: url('TerminusTTF.woff2') format('woff2');
 	}
-	html, code {
+	html, code, input {
 		font-family: 'Terminus (TTF)';
 		font-size: 18px;
 	}
@@ -26,7 +26,7 @@
 	main {
 		word-wrap: break-word;
 	}
-	p, label {
+	p, label, input {
 		color: #938C81;
 	}
 	article {
@@ -65,20 +65,6 @@
 	a {
 		color: #FF0000;
 	}
-	/* input[type="checkbox"] {
-		display: none;
-	}
-	.cb {
-		display: inline-block;
-		position: relative;
-		cursor: pointer;
-	}
-	.cb input:checked + span:before {
-		content: '[x]';
-	}
-	.cb input:not(:checked) + span:before {
-		content: '[ ]';
-	} */
 	label {
 		cursor: pointer;
 	}
@@ -90,6 +76,14 @@
 	}
 	input[type=checkbox] {
 		display:none;
+	}
+	input[type="search"] {
+		border: solid 2px #923B2C;
+		background-color: inherit;
+		border-style: dotted;
+	}
+	input:focus {
+		outline: none;
 	}
 </style>
 
@@ -116,15 +110,13 @@ Welcome! - @{posts_total} total posts.
 
 <form action="/" method="GET">
 @for tag in all_tags
-
-<input type="checkbox" id="tag_@{tag.tag}" name="tag_@{tag.tag}">
-<label for="tag_@{tag.tag}">@{tag.tag}: @{tag.count}</label>
-
+	<input type="checkbox" id="tag_@{tag.tag}" name="tag_@{tag.tag}">
+	<label for="tag_@{tag.tag}">@{tag.tag}: <strong>@{tag.count}</strong></label>
 @end
+<br>
+	<input type="search" name="search">
+	<input type="submit" value="Send GET Request">
 </form>
-
-<!-- <input type="search" name="search">
-<input type="submit" value="Send GET Request"> -->
 
 <hr color="gray">
 
