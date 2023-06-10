@@ -538,7 +538,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 
 fn main() {
 	mut app := &App{
-		media_regex: regex.regex_opt(r'https?://\S+\.(?:(png)|(jpe?g)|(gif)|(svg)|(webp)|(mp4)|(webm))')!
+		media_regex: regex.regex_opt(r'https?://\S+\.(?:(png)|(jpe?g)|(gif)|(svg)|(webp)|(mp4)|(webm)|(mov))')!
 		db: sqlite.connect("data.sqlite")!
 		wal: os.open_append("wal.log")!
 		last_edit_time: time.now()
@@ -557,5 +557,5 @@ fn main() {
 	})!
 
 	println("http://localhost:8080/")
-	picoev.new(port: 8080, cb: &callback, user_data: app, max_write: 8192).serve() // RIGHT UNDER THE MAXIMUM i32 SIGNED VALUE
+	picoev.new(port: 8080, cb: &callback, user_data: app, max_read: 8192, max_write: 8192).serve() // RIGHT UNDER THE MAXIMUM i32 SIGNED VALUE
 }

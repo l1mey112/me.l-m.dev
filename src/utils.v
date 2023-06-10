@@ -66,7 +66,7 @@ fn (mut app App) preprocess(text string) string {
 	ntext := app.media_regex.replace_by_fn(text, fn (_ regex.RE, text string, b1 int, b2 int) string {
 		t := text[b1..b2]
 
-		if t.ends_with('mp4') || t.ends_with('webm') {
+		if t.ends_with('mp4') || t.ends_with('webm') || t.ends_with('mov') {
 			return '\n<video preload="none" src="${t}" controls></video>\n'
 		}
 		return '\n<img loading="lazy" src="${t}">\n'
