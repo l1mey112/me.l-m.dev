@@ -380,6 +380,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 				res.end()
 				return
 			}
+			app.logln("/post: created /#${post.created_at.unix}")
 
 			app.invalidate_cache()
 			see_other('/#${post.created_at.unix}', mut res)
