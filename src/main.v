@@ -336,7 +336,7 @@ fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res p
 
 				db_query += "tags like '%${tag}%' escape '\\'"
 				if idx + 1 < query.tags.len {
-					db_query += " or "
+					db_query += " and "
 				} else {
 					db_query += ")"
 				}
