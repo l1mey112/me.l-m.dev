@@ -139,23 +139,34 @@ Welcome! - @{posts_total} total posts.
 
 @if is_authed
 
+@if !edit_is
 <details>
 <summary>New Post</summary>
+@end
 <br>
 
 <form action="/post" method="POST">
 	<label>
-		tags: <input type="text" name="tags">
+		tags: <input type="text" name="tags" value="@{edit_target_post.tags}">
 	</label>
 	<label>
+@if edit_is
+		<input type="submit"> [ edit ]
+@else
 		<input type="submit"> [ go ]
+@end
 	</label>
 	<br>
-	<textarea name="content" rows=10>It was a dark and stormy night...</textarea>
+	<textarea name="content" rows=10>@{edit_target_post.content}</textarea>
+@if edit_is
+	<input type="hidden" value="@{edit_target_post.created_at.unix}" name="post_id">
+@end
 </form>
 
 <hr color="gray">
+@if !edit_is
 </details>
+@end
 
 @end
 
@@ -165,11 +176,13 @@ Welcome! - @{posts_total} total posts.
 		<time datetime="@{post.created_at.format_rfc3339()}">@{post.created_at}</time>
 		<a href="/#@{post.created_at.unix}">#@{post.created_at.unix}</a>
 		@{app.fmt_tag(post.tags.split(' '))}
+@if is_authed
 		<div class="r">
-			<a href="/delete/@{post.created_at.unix}">[x]</a>
-			<a href="/edit/@{post.created_at.unix}">[e]</a>
+			<a href="/?edit=@{post.created_at.unix}">[e]</a>
 			<a href="/backup">[b]</a>
+			<a href="/delete/@{post.created_at.unix}">[x]</a>
 		</div>
+@end
 	</header>
 	<main>
 		@{app.preprocess(post.content)}

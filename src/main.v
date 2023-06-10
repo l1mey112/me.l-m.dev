@@ -120,11 +120,13 @@ fn (app &App) fmt_tag(tags []string) string {
 	return sb.str()
 }
 
-fn get_post(req string) ?Post {
+fn get_post(req string) ?(Post, bool) {
 	// tags=test+test&content=It+was+a+dark+and+stormy+night...
 
 	mut content := ?string(none)
 	mut tags := ?string(none)
+	mut created_at := time.Time{}
+	mut is_update := false
 
 	for word in req.split('&') {
 		kv := word.split_nth('=', 2)
@@ -138,16 +140,22 @@ fn get_post(req string) ?Post {
 			content = val
 		} else if key == 'tags' {
 			tags = val
+		} else if key == 'post_id' {
+			unix := i64(strconv.parse_uint(val, 10, 64) or {
+				continue
+			})
+			created_at = time.unix(unix)
+			is_update = true
 		}
 	}
 
 	post := Post{
-		created_at: time.now()
+		created_at: if created_at.unix == 0 { time.now() } else { created_at } 
 		tags: tags?
 		content: content?
 	}
 
-	return post
+	return post, is_update
 }
 
 fn get_query(req string) Query {
@@ -204,6 +212,9 @@ fn sqlsearch(a string) string {
 }
 
 fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res phttp.Response) {
+	// edit post by unix (AUTH ONLY)
+	//   /?edit=123456789
+
 	// 1. handle home url
 	// 2. parse search queries
 	// 3. cache lookup
@@ -213,7 +224,46 @@ fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res p
 	// 5. enter into popularity cache
 	// \-- return
 
-	query := get_query(req)
+	// a non ?Post is more convienent to $tmpl()
+	mut edit_is := false
+	mut edit_target_post := Post{
+		content: 'It was a dark and stormy night...'
+	}
+
+	// ignore and pass if not authed
+	if is_authed && phttp.cmpn(req, '/?edit=', 7) {
+		// assert '299223&hello=test'.i64() == 299223
+		// -- will ignore everything else
+
+		v := req[7..].i64()
+
+		if v <= 0 {
+			res.write_string('HTTP/1.1 400 Bad Request\r\n')
+			res.header_date()
+			res.write_string('Content-Length: 0\r\n\r\n')
+			res.end()
+			return
+		}
+
+		unix := time.unix(v)
+
+		rows := sql app.db {
+		    select from Post where created_at == unix limit 1
+		} or {
+			res.write_string('HTTP/1.1 400 Bad Request\r\n')
+			res.header_date()
+			res.write_string('Content-Length: 0\r\n\r\n')
+			res.end()
+			return
+		}
+		edit_is = true
+		edit_target_post = rows[0]
+	}
+
+	mut query := Query{}
+	if !edit_is {
+		query = get_query(req)
+	}
 
 	// always render new if authed, never cache authed pages
 
@@ -232,24 +282,26 @@ fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res p
 
 	mut db_query := "select * from posts"
 
-	if query.search != "" {
-		db_query += " where (content glob '*${sqlsearch(query.search)}*' collate nocase)"
-	}
-	if query.tags.len != 0 {
-		db_query += if query.search != "" {
-			" and ("
-		} else {
-			" where ("
+	if !edit_is {
+		if query.search != "" {
+			db_query += " where (content glob '*${sqlsearch(query.search)}*' collate nocase)"
 		}
-
-		for idx, t in query.tags {
-			tag := t.replace_each(['_', '\\_', '%', '\\%'])
-
-			db_query += "tags like '%${tag}%' escape '\\'"
-			if idx + 1 < query.tags.len {
-				db_query += " or "
+		if query.tags.len != 0 {
+			db_query += if query.search != "" {
+				" and ("
 			} else {
-				db_query += ")"
+				" where ("
+			}
+
+			for idx, t in query.tags {
+				tag := t.replace_each(['_', '\\_', '%', '\\%'])
+
+				db_query += "tags like '%${tag}%' escape '\\'"
+				if idx + 1 < query.tags.len {
+					db_query += " or "
+				} else {
+					db_query += ")"
+				}
 			}
 		}
 	}
@@ -360,7 +412,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 				see_other('/', mut res)
 				return
 			} else if phttp.cmpn(req.path, '/delete/', 8) {
-				post_created_at := time.unix(i64(strconv.parse_uint(req.path[8..], 10, 32) or {
+				post_created_at := time.unix(i64(strconv.parse_uint(req.path[8..], 10, 64) or {
 					res.write_string('HTTP/1.1 400 Bad Request\r\n')
 					res.header_date()
 					res.write_string('Content-Length: 0\r\n\r\n')
@@ -397,7 +449,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 	} else if phttp.cmpn(req.method, 'POST ', 5) {
 		if phttp.cmp(req.path, '/post') {
 			// body contains urlencoded data
-			post := get_post(req.body) or {
+			post, is_update := get_post(req.body) or {
 				res.write_string('HTTP/1.1 400 Bad Request\r\n')
 				res.header_date()
 				res.write_string('Content-Length: 0\r\n\r\n')
@@ -405,15 +457,27 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 				return
 			}
 
-			sql app.db {
-				insert post into Post
-			} or {
-				app.logln("/post: failed ${err}")
-				res.http_500()
-				res.end()
-				return
+			if !is_update {
+				sql app.db {
+					insert post into Post
+				} or {
+					app.logln("/post: failed ${err}")
+					res.http_500()
+					res.end()
+					return
+				}
+				app.logln("/post: created /#${post.created_at.unix}")
+			} else {
+				sql app.db {
+					update Post set content = post.content, tags = post.tags where created_at == post.created_at
+				} or {
+					app.logln("/post: update /#${post.created_at} failed ${err}")
+					res.http_500()
+					res.end()
+					return
+				}
+				app.logln("/post: update /#${post.created_at.unix}")
 			}
-			app.logln("/post: created /#${post.created_at.unix}")
 
 			app.invalidate_cache()
 			see_other('/#${post.created_at.unix}', mut res)
