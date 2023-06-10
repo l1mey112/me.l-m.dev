@@ -344,6 +344,8 @@ fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res p
 		}
 	}
 
+	db_query += ' order by created_at desc'
+
 	posts := app.raw_query(db_query) or {
 		app.logln("/ (posts): failed ${err}")
 		res.http_500()

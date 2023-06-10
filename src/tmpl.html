@@ -173,7 +173,7 @@ Welcome! - @{posts_total} total posts.
 @for post in posts
 <article id="@{post.created_at.unix}">
 	<header>
-		<time datetime="@{post.created_at.format_rfc3339()}">@{post.created_at}</time>
+		<time datetime="@{post.created_at.format_rfc3339()}">@{post.created_at.utc_string()}</time>
 		<a href="/#@{post.created_at.unix}">#@{post.created_at.unix}</a>
 		@{app.fmt_tag(post.tags.split(' '))}
 @if is_authed
