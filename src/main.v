@@ -17,6 +17,12 @@ mut:
 	media_regex regex.RE
 	db sqlite.DB
 	cache []CacheEntry = []CacheEntry{cap: cache_max}
+	wal os.File // append only
+}
+
+fn (mut app App) logln(v string) {
+	app.wal.writeln('${time.now()}: ${v}') or {}
+	app.wal.flush()
 }
 
 fn (mut app App) invalidate_cache() {
@@ -111,12 +117,6 @@ fn (app &App) fmt_tag(tags []string) string {
 	sb.write_string(']')
 
 	return sb.str()
-}
-
-fn (app &App) dbg_log() {
-	for idx, c in app.cache {
-		eprintln("${idx}: (gzip: ${c.render_gzip != none}) (${c.pop}) '${c.query.search}' > ${c.query.tags}")
-	}
 }
 
 fn get_post(req string) ?Post {
@@ -227,7 +227,6 @@ fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res p
 			write_all(mut res, render)
 			return
 		}
-		eprintln("cache MISS: ${query}")
 	}
 
 	mut db_query := "select * from posts"
@@ -255,7 +254,7 @@ fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res p
 	}
 
 	posts := app.raw_query(db_query) or {
-		eprintln("${time.now()}: ${err}")
+		app.logln("/ (posts): failed ${err}")
 		res.http_500()
 		res.end()
 		return
@@ -267,7 +266,7 @@ fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res p
 	})
 
 	tag_rows := app.raw_query(query_all_tags) or {
-		eprintln("${time.now()}: ${err}")
+		app.logln("/ (tags): failed ${err}")
 		res.http_500()
 		res.end()
 		return
@@ -338,7 +337,6 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 	if phttp.cmpn(req.method, 'GET ', 4) {
 		if phttp.cmp(req.path, '/') || phttp.cmpn(req.path, '/?', 2) {
 			app.serve_home(req.path, is_authed, use_gzip, mut res)
-			app.dbg_log()
 			return
 		} else if phttp.cmp(req.path, '/TerminusTTF.woff2') {
 			res.http_ok()
@@ -348,14 +346,16 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 			return
 		} else if is_authed {
 			if phttp.cmp(req.path, '/backup') {
-				query := "vacuum into 'backup_${time.now().unix}.sqlite'"
+				file := "backup_${time.now().unix}.sqlite"
+				query := "vacuum into '${file}'"
 				ret := app.db.exec_none(query)
 				if sqlite.is_error(ret) {
-					eprintln("/backup: failed ${app.db.error_message(ret, query)}")
+					app.logln("/backup: failed ${app.db.error_message(ret, query)}")
 					res.http_500()
 					res.end()
 					return
 				}
+				app.logln("/backup: created '${file}'")
 				see_other('/', mut res)
 			}
 		}
@@ -375,7 +375,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 			sql app.db {
 				insert post into Post
 			} or {
-				eprintln("${time.now()}: ${err}")
+				app.logln("/post: failed ${err}")
 				res.http_500()
 				res.end()
 				return
@@ -397,7 +397,10 @@ fn main() {
 	mut app := &App{
 		media_regex: regex.regex_opt(r'https?://\S+\.(?:(png)|(jpe?g)|(gif)|(svg)|(webp)|(mp4)|(webm))')!
 		db: sqlite.connect("data.sqlite")!
+		wal: os.open_append("wal.log")!
 	}
+
+	app.logln("begin!")
 
 	/* C.atexit(fn [mut app] () {
 		app.db.close() or { panic(err) }
@@ -405,7 +408,8 @@ fn main() {
 	}) */
 
 	os.signal_opt(.int, fn [mut app] (_ os.Signal) {
-		app.db.close() or { panic(err) }
+		app.db.close() or {}
+		app.wal.close()
 		println('\nsigint: goodbye')
 		exit(0)
 	})!
