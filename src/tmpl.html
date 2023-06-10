@@ -94,6 +94,10 @@
 		width: 100%;
 		resize: none;
 	}
+	.r {
+		margin-left: 1rem;
+		float: right;
+	}
 </style>
 
 <div class="cnt">
@@ -161,6 +165,11 @@ Welcome! - @{posts_total} total posts.
 		<time datetime="@{post.created_at.format_rfc3339()}">@{post.created_at}</time>
 		<a href="/#@{post.created_at.unix}">#@{post.created_at.unix}</a>
 		@{app.fmt_tag(post.tags.split(' '))}
+		<div class="r">
+			<a href="/delete/@{post.created_at.unix}">[x]</a>
+			<a href="/edit/@{post.created_at.unix}">[e]</a>
+			<a href="/backup">[b]</a>
+		</div>
 	</header>
 	<main>
 		@{app.preprocess(post.content)}

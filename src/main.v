@@ -310,6 +310,13 @@ fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res p
 	}
 }
 
+fn see_other(location string, mut res phttp.Response) {
+	res.write_string('HTTP/1.1 303 See Other\r\n')
+	res.write_string('Location: ${location}\r\n')
+	res.write_string('Content-Length: 0\r\n\r\n')
+	res.end()
+}
+
 fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 	mut app := unsafe { &App(data) }
 	mut use_gzip := false
@@ -332,15 +339,28 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 		if phttp.cmp(req.path, '/') || phttp.cmpn(req.path, '/?', 2) {
 			app.serve_home(req.path, is_authed, use_gzip, mut res)
 			app.dbg_log()
+			return
 		} else if phttp.cmp(req.path, '/TerminusTTF.woff2') {
 			res.http_ok()
 			res.header_date()
 			res.write_string('Content-Type: font/woff2\r\n')
 			write_all(mut res, terminus)
-		} else {
-			res.http_404()
-			res.end()
+			return
+		} else if is_authed {
+			if phttp.cmp(req.path, '/backup') {
+				query := "vacuum into 'backup_${time.now().unix}.sqlite'"
+				ret := app.db.exec_none(query)
+				if sqlite.is_error(ret) {
+					eprintln("/backup: failed ${app.db.error_message(ret, query)}")
+					res.http_500()
+					res.end()
+					return
+				}
+				see_other('/', mut res)
+			}
 		}
+		res.http_404()
+		res.end()
 	} else if phttp.cmpn(req.method, 'POST ', 5) {
 		if phttp.cmp(req.path, '/post') {
 			// body contains urlencoded data
@@ -362,11 +382,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 			}
 
 			app.invalidate_cache()
-
-			res.write_string('HTTP/1.1 303 See Other\r\n')
-			res.write_string('Location: /#${post.created_at.unix}\r\n')
-			res.write_string('Content-Length: 0\r\n\r\n')
-			res.end()
+			see_other('/#${post.created_at.unix}', mut res)
 		} else {
 			res.http_404()
 			res.end()
