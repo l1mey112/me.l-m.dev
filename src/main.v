@@ -7,6 +7,7 @@ import strings
 import compress.gzip
 import net.urllib
 import time
+import strconv
 
 const cache_max = 8
 const cache_min_gzip = 1500 // will rarely get hit
@@ -356,6 +357,27 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 					return
 				}
 				app.logln("/backup: created '${file}'")
+				see_other('/', mut res)
+			} else if phttp.cmpn(req.path, '/delete/', 8) {
+				post_created_at := time.unix(i64(strconv.parse_uint(req.path[8..], 10, 32) or {
+					res.write_string('HTTP/1.1 400 Bad Request\r\n')
+					res.header_date()
+					res.write_string('Content-Length: 0\r\n\r\n')
+					res.end()
+					return
+				}))
+
+				sql app.db {
+					delete from Post where created_at == post_created_at
+				} or {
+					res.write_string('HTTP/1.1 400 Bad Request\r\n')
+					res.header_date()
+					res.write_string('Content-Length: 0\r\n\r\n')
+					res.end()
+					return
+				}
+
+				app.logln("/delete: deleted /#${post_created_at.unix}")
 				see_other('/', mut res)
 			}
 		}
