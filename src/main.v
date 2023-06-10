@@ -9,6 +9,7 @@ import net.urllib
 import time
 import strconv
 
+const base_url = 'http://localhost:8080/'
 const cache_max = 8
 const cache_min_gzip = 1500 // will rarely get hit
 
@@ -17,7 +18,10 @@ struct App {
 mut:
 	media_regex regex.RE
 	db sqlite.DB
+	last_edit_time time.Time // caches are invalidated at that time
 	cache []CacheEntry = []CacheEntry{cap: cache_max}
+	cache_rss ?string
+	cache_rss_gzip ?string
 	wal os.File // append only
 }
 
@@ -28,7 +32,10 @@ fn (mut app App) logln(v string) {
 
 fn (mut app App) invalidate_cache() {
 	// unsafe { app.cache.len = 0 }
+	app.last_edit_time = time.now()
 	app.cache = []CacheEntry{cap: cache_max} // force GC to collect old ptrs
+	app.cache_rss = none
+	app.cache_rss_gzip = none
 }
 
 // return render, use_gzip
@@ -211,6 +218,59 @@ fn sqlsearch(a string) string {
 	return a.replace_each(sqlsearch_replace)
 }
 
+const xmlescape_replace = [
+	"\"", "&quot;"
+	"'", "&apos;"
+	"<", "&lt;"
+	">", "&gt;"
+	"&", "&amp;"
+]
+
+fn xmlescape(a string) string {
+	return a.replace_each(xmlescape_replace)
+}
+
+fn (mut app App) serve_rss(use_gzip bool, mut res phttp.Response) {
+	if app.cache_rss == none {
+		posts := sql app.db {
+			select from Post
+		} or {
+			panic('unreachable')
+		}
+
+		app.cache_rss = $tmpl('tmpl.xml')
+	}
+
+	res.http_ok()
+	res.header_date()
+	res.write_string('Content-Type: application/rss+xml\r\n')
+
+	if use_gzip {
+		if use_gzip {
+			res.write_string('Content-Encoding: gzip\r\n')
+		}
+		if cache_rss_gzip := app.cache_rss_gzip {
+			write_all(mut res, cache_rss_gzip)
+			return
+		} else {
+			if cache_rss := app.cache_rss {
+				// never fails
+
+				if val := gzip.compress(cache_rss.bytes()) {
+					cache_rss_gzip := val.bytestr()
+					app.cache_rss_gzip = cache_rss_gzip
+					write_all(mut res, cache_rss_gzip)
+					return
+				}
+			}
+		}
+	}
+	if cache_rss := app.cache_rss {
+		write_all(mut res, cache_rss)
+		return
+	}
+}
+
 fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res phttp.Response) {
 	// edit post by unix (AUTH ONLY)
 	//   /?edit=123456789
@@ -391,6 +451,9 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 		if phttp.cmp(req.path, '/') || phttp.cmpn(req.path, '/?', 2) {
 			app.serve_home(req.path, is_authed, use_gzip, mut res)
 			return
+		} else if phttp.cmp(req.path, '/index.xml') {
+			app.serve_rss(use_gzip, mut res)
+			return
 		} else if phttp.cmp(req.path, '/TerminusTTF.woff2') {
 			res.http_ok()
 			res.header_date()
@@ -471,7 +534,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 				sql app.db {
 					update Post set content = post.content, tags = post.tags where created_at == post.created_at
 				} or {
-					app.logln("/post: update /#${post.created_at} failed ${err}")
+					// app.logln("/post: update /#${post.created_at} failed ${err}")
 					res.http_500()
 					res.end()
 					return
@@ -496,6 +559,7 @@ fn main() {
 		media_regex: regex.regex_opt(r'https?://\S+\.(?:(png)|(jpe?g)|(gif)|(svg)|(webp)|(mp4)|(webm))')!
 		db: sqlite.connect("data.sqlite")!
 		wal: os.open_append("wal.log")!
+		last_edit_time: time.now()
 	}
 
 	/* C.atexit(fn [mut app] () {

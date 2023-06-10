@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+	<title>lifestream2</title>
+	<link>@{base_url}</link>
+	<description>lifestream2</description>
+	<language>en-us</language>
+	<copyright>Copyright 2023, l-m.dev</copyright>
+	<generator>The V Programming Language</generator>
+	<lastBuildDate>@{app.last_edit_time.utc_string()}</lastBuildDate>
+	<atom:link href="@{base_url}index.xml" rel="self" type="application/rss+xml" />
+@for post in posts
+	<item>
+		<title>@{post.created_at}</title>
+		<link>@{base_url}#@{post.created_at.unix}</link>
+		<pubDate>@{post.created_at.utc_string()}</pubDate>
+		<category>@{post.tags}</category>
+		<description>@{xmlescape(app.preprocess(post.content))}</description>
+	</item>
+@end
+</channel>
+</rss>
