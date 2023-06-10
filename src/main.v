@@ -358,6 +358,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 				}
 				app.logln("/backup: created '${file}'")
 				see_other('/', mut res)
+				return
 			} else if phttp.cmpn(req.path, '/delete/', 8) {
 				post_created_at := time.unix(i64(strconv.parse_uint(req.path[8..], 10, 32) or {
 					res.write_string('HTTP/1.1 400 Bad Request\r\n')
@@ -378,7 +379,17 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 				}
 
 				app.logln("/delete: deleted /#${post_created_at.unix}")
+
+				// redirect to the next post
+				if row := app.db.exec_one('select created_at from posts where created_at > ${post_created_at.unix} order by created_at limit 1') {
+					nearest_created_at := row.vals[0].int() // created_at
+					if nearest_created_at != 0 {
+						see_other('/#${nearest_created_at}', mut res)
+						return
+					}
+				}
 				see_other('/', mut res)
+				return
 			}
 		}
 		res.http_404()
@@ -422,8 +433,6 @@ fn main() {
 		db: sqlite.connect("data.sqlite")!
 		wal: os.open_append("wal.log")!
 	}
-
-	app.logln("begin!")
 
 	/* C.atexit(fn [mut app] () {
 		app.db.close() or { panic(err) }
