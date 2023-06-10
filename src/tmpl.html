@@ -26,7 +26,7 @@
 	main {
 		word-wrap: break-word;
 	}
-	p, label, input, textarea {
+	p, label, input, textarea, details {
 		color: #938C81;
 	}
 	article {
@@ -135,6 +135,10 @@ Welcome! - @{posts_total} total posts.
 
 @if is_authed
 
+<details>
+<summary>New Post</summary>
+<br>
+
 <form action="/post" method="POST">
 	<label>
 		tags: <input type="text" name="tags">
@@ -147,6 +151,7 @@ Welcome! - @{posts_total} total posts.
 </form>
 
 <hr color="gray">
+</details>
 
 @end
 
