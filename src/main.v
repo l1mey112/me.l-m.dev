@@ -342,9 +342,11 @@ fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res p
 				}
 			}
 		}
+	} else {
+		db_query += " where created_at = ${edit_target_post.created_at.unix}"
 	}
 
-	// db_query += ' order by created_at desc'
+	// db_query += " order by created_at desc"
 
 	posts := app.raw_query(db_query) or {
 		app.logln("/ (posts): failed ${err}")
