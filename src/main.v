@@ -21,7 +21,6 @@ mut:
 	last_edit_time time.Time // caches are invalidated at that time
 	cache []CacheEntry = []CacheEntry{cap: cache_max}
 	cache_rss ?string
-	cache_rss_gzip ?string
 	wal os.File // append only
 }
 
@@ -35,7 +34,6 @@ fn (mut app App) invalidate_cache() {
 	app.last_edit_time = time.now()
 	app.cache = []CacheEntry{cap: cache_max} // force GC to collect old ptrs
 	app.cache_rss = none
-	app.cache_rss_gzip = none
 }
 
 // return render, use_gzip
@@ -230,7 +228,7 @@ fn xmlescape(a string) string {
 	return a.replace_each(xmlescape_replace)
 }
 
-fn (mut app App) serve_rss(use_gzip bool, mut res phttp.Response) {
+fn (mut app App) serve_rss(mut res phttp.Response) {
 	if app.cache_rss == none {
 		posts := sql app.db {
 			select from Post
@@ -245,26 +243,6 @@ fn (mut app App) serve_rss(use_gzip bool, mut res phttp.Response) {
 	res.header_date()
 	res.write_string('Content-Type: application/rss+xml\r\n')
 
-	if use_gzip {
-		if use_gzip {
-			res.write_string('Content-Encoding: gzip\r\n')
-		}
-		if cache_rss_gzip := app.cache_rss_gzip {
-			write_all(mut res, cache_rss_gzip)
-			return
-		} else {
-			if cache_rss := app.cache_rss {
-				// never fails
-
-				if val := gzip.compress(cache_rss.bytes()) {
-					cache_rss_gzip := val.bytestr()
-					app.cache_rss_gzip = cache_rss_gzip
-					write_all(mut res, cache_rss_gzip)
-					return
-				}
-			}
-		}
-	}
 	if cache_rss := app.cache_rss {
 		write_all(mut res, cache_rss)
 		return
@@ -452,7 +430,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 			app.serve_home(req.path, is_authed, use_gzip, mut res)
 			return
 		} else if phttp.cmp(req.path, '/index.xml') {
-			app.serve_rss(use_gzip, mut res)
+			app.serve_rss(mut res)
 			return
 		} else if phttp.cmp(req.path, '/TerminusTTF.woff2') {
 			res.http_ok()
