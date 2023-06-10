@@ -119,6 +119,36 @@ fn (app &App) dbg_log() {
 	}
 }
 
+fn get_post(req string) ?Post {
+	// tags=test+test&content=It+was+a+dark+and+stormy+night...
+
+	mut content := ?string(none)
+	mut tags := ?string(none)
+
+	for word in req.split('&') {
+		kv := word.split_nth('=', 2)
+		if kv.len != 2 {
+			continue
+		}
+		key := urllib.query_unescape(kv[0]) or { continue }
+		val := urllib.query_unescape(kv[1]) or { continue }
+
+		if key == 'content' {
+			content = val
+		} else if key == 'tags' {
+			tags = val
+		}
+	}
+
+	post := Post{
+		created_at: time.now()
+		tags: tags?
+		content: content?
+	}
+
+	return post
+}
+
 fn get_query(req string) Query {
 	// assert req == '/' || req.match_blob('/?*')
 
@@ -307,6 +337,36 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 			res.header_date()
 			res.write_string('Content-Type: font/woff2\r\n')
 			write_all(mut res, terminus)
+		} else {
+			res.http_404()
+			res.end()
+		}
+	} else if phttp.cmpn(req.method, 'POST ', 5) {
+		if phttp.cmp(req.path, '/post') {
+			// body contains urlencoded data
+			post := get_post(req.body) or {
+				res.write_string('HTTP/1.1 400 Bad Request\r\n')
+				res.header_date()
+				res.write_string('Content-Length: 0\r\n\r\n')
+				res.end()
+				return
+			}
+
+			sql app.db {
+				insert post into Post
+			} or {
+				eprintln("${time.now()}: ${err}")
+				res.http_500()
+				res.end()
+				return
+			}
+
+			app.invalidate_cache()
+
+			res.write_string('HTTP/1.1 303 See Other\r\n')
+			res.write_string('Location: /#${post.created_at.unix}\r\n')
+			res.write_string('Content-Length: 0\r\n\r\n')
+			res.end()
 		} else {
 			res.http_404()
 			res.end()

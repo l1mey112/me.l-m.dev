@@ -12,7 +12,7 @@
 		font-family: 'Terminus (TTF)';
 		src: url('TerminusTTF.woff2') format('woff2');
 	}
-	html, code, input {
+	html, code, input, textarea {
 		font-family: 'Terminus (TTF)';
 		font-size: 18px;
 	}
@@ -26,7 +26,7 @@
 	main {
 		word-wrap: break-word;
 	}
-	p, label, input {
+	p, label, input, textarea {
 		color: #938C81;
 	}
 	article {
@@ -77,16 +77,22 @@
 	input[type=checkbox] {
 		display:none;
 	}
-	input[type=search] {
+	input[type=search], input[type=text], textarea {
 		border: solid 2px #923B2C;
 		background-color: inherit;
 		border-style: dotted;
 	}
-	input:focus {
+	input:focus, textarea:focus {
 		outline: none;
 	}
 	input[type=submit] {
 		display: none;
+	}
+	textarea {
+		/* box-sizing: border-box;
+		margin: auto; */
+		width: 100%;
+		resize: none;
 	}
 </style>
 
@@ -129,9 +135,16 @@ Welcome! - @{posts_total} total posts.
 
 @if is_authed
 
-<h1>welcome</h1>
-
-<!-- enter a textarea here, post things -->
+<form action="/post" method="POST">
+	<label>
+		tags: <input type="text" name="tags">
+	</label>
+	<label>
+		<input type="submit"> [ go ]
+	</label>
+	<br>
+	<textarea name="content" rows=10>It was a dark and stormy night...</textarea>
+</form>
 
 <hr color="gray">
 
