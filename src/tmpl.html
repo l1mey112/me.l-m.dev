@@ -23,9 +23,6 @@
 		margin-left: auto;
 		margin-right: auto;
 	}
-	main {
-		word-wrap: break-word;
-	}
 	p, label, input, textarea, details {
 		color: #938C81;
 	}
@@ -68,10 +65,13 @@
 	label {
 		cursor: pointer;
 	}
-	form input[type=checkbox] + label:before {
+	input[type=checkbox] {
+		word-break: keep-all;
+	}
+	input[type=checkbox] + label:before {
 		content: '[ ] ';
 	}
-	form input[type=checkbox]:checked + label:before {
+	input[type=checkbox]:checked + label:before {
 		content: '[x] ';
 	}
 	input[type=checkbox] {
@@ -98,6 +98,9 @@
 		margin-left: 1rem;
 		float: right;
 	}
+	.ib {
+		display: inline-block;
+	}
 </style>
 
 <div class="cnt">
@@ -119,12 +122,14 @@ Welcome! - @{posts_total} total posts.
 
 </div>
 
-<hr color="gray">
+<hr color=gray>
 
-<form action="/" method="GET">
+<form action=/ method=GET>
 @for tag in all_tags
+<div class="ib">
 	<input type="checkbox" id="tag_@{tag.tag}" name="tag_@{tag.tag}">
 	<label for="tag_@{tag.tag}">@{tag.tag}: <strong>@{tag.count}</strong></label>
+</div>
 @end
 <br>
 	<div style="text-align: right;">
@@ -135,7 +140,7 @@ Welcome! - @{posts_total} total posts.
 	</div>
 </form>
 
-<hr color="gray">
+<hr color=gray>
 
 @if is_authed
 
