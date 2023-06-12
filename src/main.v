@@ -264,38 +264,69 @@ fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res p
 
 	// a non ?Post is more convienent to $tmpl()
 	mut edit_is := false
-	mut edit_target_post := Post{
+	mut target_post := Post{
 		content: 'It was a dark and stormy night...'
 	}
 
-	// ignore and pass if not authed
-	if is_authed && phttp.cmpn(req, '/?edit=', 7) {
-		// assert '299223&hello=test'.i64() == 299223
-		// -- will ignore everything else
-
-		v := req[7..].i64()
-
-		if v <= 0 {
+	if phttp.cmpn(req, '/?meta=', 7) {
+		unix := time.unix(i64(strconv.parse_uint(req[7..], 10, 64) or {
 			res.write_string('HTTP/1.1 400 Bad Request\r\n')
 			res.header_date()
 			res.write_string('Content-Length: 0\r\n\r\n')
 			res.end()
 			return
-		}
-
-		unix := time.unix(v)
+		}))
 
 		rows := sql app.db {
 		    select from Post where created_at == unix limit 1
 		} or {
+			res.http_404()
+			res.end()
+			return
+		}
+
+		if rows.len == 0 {
+			res.http_404()
+			res.end()
+			return
+		}
+
+		post := rows[0]
+		description := "${post.created_at.utc_string()} + ${app.fmt_tag(post.tags.split(' '))}"
+
+		res.http_ok()
+		res.header_date()
+		res.html()
+		write_all(mut res, $tmpl('meta_tmpl.html'))
+		return
+	}
+
+	// ignore and pass if not authed
+	if is_authed && phttp.cmpn(req, '/?edit=', 7) {
+		unix := time.unix(i64(strconv.parse_uint(req[7..], 10, 64) or {
 			res.write_string('HTTP/1.1 400 Bad Request\r\n')
 			res.header_date()
 			res.write_string('Content-Length: 0\r\n\r\n')
 			res.end()
 			return
+		}))
+
+		rows := sql app.db {
+		    select from Post where created_at == unix limit 1
+		} or {
+			res.http_404()
+			res.end()
+			return
 		}
+
+		if rows.len == 0 {
+			res.http_404()
+			res.end()
+			return
+		}
+		
 		edit_is = true
-		edit_target_post = rows[0]
+		target_post = rows[0]
 	}
 
 	mut query := Query{}
@@ -343,7 +374,7 @@ fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res p
 			}
 		}
 	} else {
-		db_query += " where created_at = ${edit_target_post.created_at.unix}"
+		db_query += " where created_at = ${target_post.created_at.unix}"
 	}
 
 	if req == '/' {

@@ -5,8 +5,8 @@
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Thought Stream</title>
-	<meta content="me.l-m.dev" property="og:title">
-	<meta content="l-m's Thought Stream (@{posts_total} posts, @{all_tags.len} unique tags)" property="og:description">
+	<meta content="me.l-m.dev | Thought Stream" property="og:title">
+	<meta content="@{posts_total} total posts, @{all_tags.len} unique tags" property="og:description">
 </head>
 <body>
 <style>
@@ -168,7 +168,7 @@ Welcome! - @{posts_total} total posts.
 
 <form action=/post method=POST>
 	<label>
-		tags: <input type="text" name="tags" value="@{edit_target_post.tags}">
+		tags: <input type="text" name="tags" value="@{target_post.tags}">
 	</label>
 	<label>
 @if edit_is
@@ -178,9 +178,9 @@ Welcome! - @{posts_total} total posts.
 @end
 	</label>
 	<br>
-	<textarea name="content" rows=10>@{edit_target_post.content}</textarea>
+	<textarea name="content" rows=10>@{target_post.content}</textarea>
 @if edit_is
-	<input type="hidden" value="@{edit_target_post.created_at.unix}" name="post_id">
+	<input type="hidden" value="@{target_post.created_at.unix}" name="post_id">
 @end
 </form>
 
@@ -202,13 +202,14 @@ Welcome! - @{posts_total} total posts.
 		<time datetime="@{post.created_at.format_rfc3339()}">@{post.created_at.utc_string()}</time>
 		<a href="/#@{post.created_at.unix}">#@{post.created_at.unix}</a>
 		@{app.fmt_tag(post.tags.split(' '))}
-@if is_authed
 		<div class="r">
+		<a href="/?meta=@{post.created_at.unix}">[share]</a>
+@if is_authed
 			<a href="/?edit=@{post.created_at.unix}">[e]</a>
 			<a href="/backup">[b]</a>
 			<a href="/delete/@{post.created_at.unix}">[x]</a>
-		</div>
 @end
+		</div>
 	</header>
 	<main>
 		@{app.preprocess(post.content)}
