@@ -32,6 +32,10 @@
 		margin: 1em;
 		padding: 1em;
 	}
+	.lat {
+		border-color: #F7208B;
+		border-style: dotted;
+	}
 	article:hover {
 		border-color: #923B2C;
 		border-style: dotted;
@@ -62,7 +66,10 @@
 	a {
 		color: #FF0000;
 	}
-	label {
+	label strong, .cl {
+		color: #FF8B8B;
+	}
+	label, summary {
 		cursor: pointer;
 	}
 	input[type=checkbox] {
@@ -89,8 +96,6 @@
 		display: none;
 	}
 	textarea {
-		/* box-sizing: border-box;
-		margin: auto; */
 		width: 100%;
 		resize: none;
 	}
@@ -124,9 +129,17 @@ Welcome! - @{posts_total} total posts.
 
 <hr color=gray>
 
+<details>
+<summary>Search <span class=cl>@{posts_total}</span> posts with <span class=cl>@{all_tags.len}</span> unique tags</summary>
+
 <form action=/ method=GET>
-@for tag in all_tags
+@for idx, tag in all_tags
+
+@if idx < 30
+<div class="ib im" style="font-size: @{2.0 - f64(idx) * 0.025}em;">
+@else
 <div class="ib">
+@end
 	<input type="checkbox" id="tag_@{tag.tag}" name="tag_@{tag.tag}">
 	<label for="tag_@{tag.tag}">@{tag.tag}: <strong>@{tag.count}</strong></label>
 </div>
@@ -140,6 +153,7 @@ Welcome! - @{posts_total} total posts.
 	</div>
 </form>
 
+</details>
 <hr color=gray>
 
 @if is_authed
@@ -150,7 +164,7 @@ Welcome! - @{posts_total} total posts.
 @end
 <br>
 
-<form action="/post" method="POST">
+<form action=/post method=POST>
 	<label>
 		tags: <input type="text" name="tags" value="@{edit_target_post.tags}">
 	</label>
@@ -176,7 +190,12 @@ Welcome! - @{posts_total} total posts.
 @end
 
 @for post in posts
+
+@if post.created_at.unix == latest_post_unix
+<article id="@{post.created_at.unix}" class=lat>
+@else
 <article id="@{post.created_at.unix}">
+@end
 	<header>
 		<time datetime="@{post.created_at.format_rfc3339()}">@{post.created_at.utc_string()}</time>
 		<a href="/#@{post.created_at.unix}">#@{post.created_at.unix}</a>

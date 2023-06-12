@@ -346,7 +346,7 @@ fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res p
 		db_query += " where created_at = ${edit_target_post.created_at.unix}"
 	}
 
-	// db_query += " order by created_at desc"
+	db_query += " order by created_at desc"
 
 	posts := app.raw_query(db_query) or {
 		app.logln("/ (posts): failed ${err}")
@@ -372,7 +372,19 @@ fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res p
 
 	posts_total := sql app.db {
 		select count from Post
-	} or { panic("unreachable") }
+	} or {
+		app.logln("/: failed ${err}")
+		res.http_500()
+		res.end()
+		return
+	}
+
+	latest_post_unix := app.raw_query("select created_at from posts order by created_at desc limit 1") or {
+		app.logln("/: failed ${err}")
+		res.http_500()
+		res.end()
+		return
+	}[0].vals[0].i64()
 
 	// do not cache authed pages
 
