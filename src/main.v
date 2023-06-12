@@ -17,6 +17,7 @@ const cache_min_gzip = 1500 // will rarely get hit
 struct App {
 mut:
 	media_regex regex.RE
+	spotify_regex regex.RE
 	db sqlite.DB
 	last_edit_time time.Time // caches are invalidated at that time
 	cache []CacheEntry = []CacheEntry{cap: cache_max}
@@ -587,6 +588,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 fn main() {
 	mut app := &App{
 		media_regex: regex.regex_opt(r'https?://\S+\.(?:(png)|(jpe?g)|(gif)|(svg)|(webp)|(mp4)|(webm)|(mov))')!
+		spotify_regex: regex.regex_opt(r'https?://open\.spotify\.com/track/(\w+)')!
 		db: sqlite.connect("data.sqlite")!
 		wal: os.open_append("wal.log")!
 		last_edit_time: time.now()
