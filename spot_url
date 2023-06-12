@@ -1,0 +1,43 @@
+import net.http
+import regex
+import encoding.base64
+import json
+
+struct Track {
+	id string
+	name string
+	uri string
+	previews struct {
+		audioPreviews struct {
+			items []struct {
+				url string
+			}
+		}
+	}
+}
+
+struct Root {
+	entities struct {
+		items map[string]Track
+	}
+}
+
+fn main() {
+	resp := http.get('https://open.spotify.com/track/1SyGlRsvPRcsbymE1MrEdq')!
+	txt := resp.body
+
+	mut re := regex.regex_opt(r'<script\s+id="initial-state"\s+type="text/plain">([^<]+)</script>')!
+
+	s, _ := re.find_from(txt, 0)
+	if s < 0 {
+		eprintln('no matches')
+		return
+	}
+	base64_content := re.get_group_by_id(txt, 0)
+
+	json_src := base64.decode_str(base64_content)
+
+	obj := json.decode(Root, json_src)!
+
+	println(obj)
+}
