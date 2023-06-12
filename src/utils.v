@@ -91,7 +91,7 @@ fn (mut app App) preprocess(text string) string {
 			<br>
 			<a href="https://open.spotify.com/artist/${track.artist_id}">${track.artist_name}</a>
 			<br>
-			<audio controls preload=metadata><source src="${track.audio_preview_url}" type="audio/mpeg"></audio>
+			<audio controls preload=none><source src="${track.audio_preview_url}" type="audio/mpeg"></audio>
 		</div>
 	</div>
 </figure>
