@@ -493,7 +493,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 			return
 		} else if is_authed {
 			if phttp.cmp(req.path, '/backup') {
-				file := "backup_${time.now().unix}.sqlite"
+				file := "backup/backup_${time.now().unix}.sqlite"
 				query := "vacuum into '${file}'"
 				ret := app.db.exec_none(query)
 				if sqlite.is_error(ret) {
@@ -598,6 +598,8 @@ fn main() {
 		app.db.close() or { panic(err) }
 		println('\natexit: goodbye')
 	}) */
+
+	assert os.is_dir('backup')
 
 	os.signal_opt(.int, fn [mut app] (_ os.Signal) {
 		app.db.close() or {}
