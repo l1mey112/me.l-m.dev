@@ -346,7 +346,12 @@ fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res p
 		db_query += " where created_at = ${edit_target_post.created_at.unix}"
 	}
 
-	db_query += " order by created_at desc"
+	if req == '/' {
+		// place unix 0 at the top, this post is pinned
+		db_query += " order by (case when created_at = 0 then 1 else 2 end), created_at desc"
+	} else {
+		db_query += " order by created_at desc"
+	}
 
 	posts := app.raw_query(db_query) or {
 		app.logln("/ (posts): failed ${err}")

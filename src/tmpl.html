@@ -182,7 +182,7 @@ Welcome! - @{posts_total} total posts.
 @end
 </form>
 
-<hr color="gray">
+<hr color=gray>
 @if !edit_is
 </details>
 @end
@@ -212,6 +212,10 @@ Welcome! - @{posts_total} total posts.
 		@{app.preprocess(post.content)}
 	</main>
 </article>
+@if post.created_at.unix == 0
+<hr colour=gray>
+@end
+
 @end
 
 </body>
