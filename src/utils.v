@@ -80,22 +80,7 @@ fn (mut app App) preprocess(text string) string {
 			return track_url
 		}
 
-		return '
-<figure>
-	<div class="sic">
-		<img src="${track.cover_art_url}" alt="Cover Art">
-	</div>
-	<div class="scc">
-		<div class="scw">
-			<a href="https://open.spotify.com/track/${track.track_id}">${track.track_name}</a>
-			<br>
-			<a href="https://open.spotify.com/artist/${track.artist_id}">${track.artist_name}</a>
-			<br>
-			<audio controls preload=none><source src="${track.audio_preview_url}" type="audio/mpeg"></audio>
-		</div>
-	</div>
-</figure>
-'
+		return $tmpl('spot_tmpl.html')
 	})
 
 	return mymarkdown.to_html(itext)
