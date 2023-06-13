@@ -543,7 +543,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 	} else if phttp.cmpn(req.method, 'POST ', 5) {
 		if phttp.cmp(req.path, '/post') {
 			// body contains urlencoded data
-			post, is_update := get_post(req.body) or {
+			post, _ := get_post(req.body) or {
 				res.write_string('HTTP/1.1 400 Bad Request\r\n')
 				res.header_date()
 				res.write_string('Content-Length: 0\r\n\r\n')
@@ -551,7 +551,15 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 				return
 			}
 
-			if !is_update {
+			// check if exists
+			count := sql app.db {
+				select count from Post where created_at == post.created_at
+			} or {
+				app.logln("/post: update: failed ${err}")
+				return
+			}
+
+			if count == 0 {
 				sql app.db {
 					insert post into Post
 				} or {
@@ -565,7 +573,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 				sql app.db {
 					update Post set content = post.content, tags = post.tags where created_at == post.created_at
 				} or {
-					// app.logln("/post: update /#${post.created_at} failed ${err}")
+					app.logln("/post: update /#${post.created_at} failed ${err}")
 					res.http_500()
 					res.end()
 					return
