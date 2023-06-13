@@ -6,9 +6,9 @@ import regex
 [table: 'posts']
 struct Post {
 	id int [primary; sql: serial]
+mut:
 	created_at time.Time
 	tags string // space separated
-mut:
 	content string
 }
 

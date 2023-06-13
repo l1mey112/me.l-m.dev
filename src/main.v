@@ -320,14 +320,12 @@ fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res p
 			return
 		}
 
-		if rows.len == 0 {
-			res.http_404()
-			res.end()
-			return
-		}
-		
 		edit_is = true
-		target_post = rows[0]
+		if rows.len != 0 {
+			target_post = rows[0]
+		} else {
+			target_post.created_at = unix
+		}
 	}
 
 	mut query := Query{}
