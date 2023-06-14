@@ -46,7 +46,7 @@ fn (mut app App) get_spotify(url string, id string) ?SpotifyTrack {
 
 fn (mut app App) req_spotify(url string) {
 	// TODO: a malformed url may cause constant requests
-	//
+	// TODO: makes a request for no reason, check for existence in DB first
 	spotify_track := spotify.get(url) or { return } // will take time!
 
 	track := SpotifyTrack{
@@ -91,16 +91,45 @@ fn (mut app App) get_youtube(id string) string {
 		select from YtThumbnail where yt_id == id
 	} or {
 		app.logln("yt_thumb_cache(get): failed ${err}")
-		return yt.default
+		return yt.yt_default
 	}
 
 	if rows.len > 0 {
-		return rows[0]
+		return rows[0].yt_thumb
 	}
 
 	spawn app.req_youtube(id)
 
-	return yt.default
+	return yt.yt_default
 }
 
+fn (mut app App) req_youtube(id string) {
+	println("req: ${id}")
+	count := sql app.db {
+		select count from YtThumbnail where yt_id == id
+	} or {
+		app.logln("yt_thumb_cache(count_existing): failed ${err}")
+		return
+	}
 
+	if count != 0 {
+		return
+	}
+
+	if thumb := yt.get_embed(id) {
+		println("found: ${id} -> ${thumb}")
+
+		tthumb := YtThumbnail{yt_id: id, yt_thumb: thumb}
+
+		sql app.db {
+			insert tthumb into YtThumbnail
+		} or {
+			app.logln("yt_thumb_cache(insert): failed ${err}")
+			return
+		}
+
+		app.invalidate_cache()
+	} else {
+		println("failed: ${id}")
+	}
+}

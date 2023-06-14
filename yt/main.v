@@ -2,17 +2,19 @@ module yt
 
 import net.http
 
-const default = "0.jpg"
+pub const yt_prepend = "https://i3.ytimg.com/vi/"
+pub const yt_default = "0.jpg"
 
 const strs = [
 	"maxresdefault.jpg"
 	"mqdefault.jpg"
+	"0.jpg" // always present
 ]
 
-pub fn get_embed(id string) string {
+pub fn get_embed(id string) ?string {
 	for v in strs {
 		r := http.get('https://i3.ytimg.com/vi/${id}/${v}') or {
-			return default
+			return none
 		}
 
 		if r.status_code != 404 {
@@ -20,5 +22,5 @@ pub fn get_embed(id string) string {
 		}
 	}
 
-	return default
+	return none
 }
