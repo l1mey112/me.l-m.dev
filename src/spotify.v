@@ -1,4 +1,5 @@
 import spotify
+import yt
 
 [table: 'spotify_cache']
 struct SpotifyTrack {
@@ -77,3 +78,29 @@ fn (mut app App) req_spotify(url string) {
 
 	app.invalidate_cache()
 }
+
+[table: 'yt_thumb_cache']
+struct YtThumbnail {
+	id int [primary; sql: serial]
+	yt_id    string
+	yt_thumb string
+}
+
+fn (mut app App) get_youtube(id string) string {
+	rows := sql app.db {
+		select from YtThumbnail where yt_id == id
+	} or {
+		app.logln("yt_thumb_cache(get): failed ${err}")
+		return yt.default
+	}
+
+	if rows.len > 0 {
+		return rows[0]
+	}
+
+	spawn app.req_youtube(id)
+
+	return yt.default
+}
+
+

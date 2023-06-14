@@ -83,5 +83,12 @@ fn (mut app App) preprocess(text string) string {
 		return $tmpl('spot_tmpl.html')
 	})
 
-	return mymarkdown.to_html(itext)
+	etext := app.youtube_regex.replace_by_fn(itext, fn (re regex.RE, text string, b1 int, b2 int) string {
+		video_url := text[b1..b2]
+		video_id := re.get_group_by_id(text, 0)
+
+		return $tmpl('yt_tmpl.html')
+	})
+
+	return mymarkdown.to_html(etext)
 }

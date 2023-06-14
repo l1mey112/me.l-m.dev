@@ -6,17 +6,13 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>me.l-m.dev</title>
 	<meta content="me.l-m.dev | Thought Stream" property="og:title">
-	<meta content="@{posts_total} total posts, @{all_tags.len} unique tags" property="og:description">
+	<meta content="586 total posts, 225 unique tags" property="og:description">
 	<meta name="theme-color" content="#F7208B">
 </head>
 <body>
 <style>
-	@font-face {
-		font-family: 'Terminus (TTF)';
-		src: url('TerminusTTF.woff2') format('woff2');
-	}
 	html, code, input, textarea {
-		font-family: 'Terminus (TTF)';
+		font-family: 'Terminus';
 		font-size: 16px;
 	}
 	body {
@@ -151,6 +147,22 @@
 	.sic image {
 		object-fit: cover;
 	}
+	/* .yttc {
+	    width: 100%;
+	    height: 75%;
+		padding-bottom: 56.25%; /* 16:9 */
+	    position: relative;
+	    overflow: hidden;
+	}
+	.yttc img {
+		position: absolute;
+		top: -16.75%; bottom: 0; left: 0; right: 0;
+		object-fit: cover;
+	} */
+	picture {}
+	picture img {
+		max-height: 200px;
+	}
 </style>
 
 <div class="cnt">
@@ -166,7 +178,7 @@
 <div class="cc">
 <p>
 <a href="https://l-m.dev">https://l-m.dev</a> - © l-m.dev 2023<br>
-Welcome! - @{posts_total} total posts.<br>
+Welcome! - 586 total posts.<br>
 Zero JavaScript, Zero Tracking.
 </p>
 </div>
@@ -175,95 +187,66 @@ Zero JavaScript, Zero Tracking.
 
 <hr color=gray>
 
-<details>
-<summary>Search <span class=cl>@{posts_total}</span> posts with <span class=cl>@{all_tags.len}</span> unique tags</summary>
-
-<form action=/ method=GET>
-@for idx, tag in all_tags
-
-@if idx < 30
-<div class="ib im" style="font-size: @{2.0 - f64(idx) * 0.025}em;">
-@else
-<div class="ib">
-@end
-	<input type="checkbox" id="tag_@{tag.tag}" name="tag_@{tag.tag}">
-	<label for="tag_@{tag.tag}">@{tag.tag}: <strong>@{tag.count}</strong></label>
-</div>
-@end
-<br>
-	<div style="text-align: right;">
-		<abbr title="Case Insensitive Glob Query"><input type="search" name="search" placeholder="example: *.wasm"></abbr>
-		<label>
-			<input type="submit"> [ go ]
-		</label>
-	</div>
-</form>
-
-</details>
-<hr color=gray>
-
-@if is_authed
-
-@if !edit_is
-<details>
-<summary>New Post</summary>
-@end
-<br>
-
-<form action=/post method=POST>
-	<label>
-		tags: <input type="text" name="tags" value="@{target_post.tags}">
-	</label>
-	<label>
-@if edit_is
-		<input type="submit"> [ edit ]
-@else
-		<input type="submit"> [ go ]
-@end
-	</label>
-	<br>
-	<textarea name="content" rows=10>@{target_post.content}</textarea>
-@if edit_is
-	<input type="hidden" value="@{target_post.created_at.unix}" name="post_id">
-@end
-</form>
-
-<hr color=gray>
-@if !edit_is
-</details>
-@end
-
-@end
-
-@for post in posts
-
-@if post.created_at.unix == latest_post_unix
-<article id="@{post.created_at.unix}" class=lat>
-@else
-<article id="@{post.created_at.unix}">
-@end
+<article id="0">
 	<header>
-		<time datetime="@{post.created_at.format_rfc3339()}">@{post.created_at.utc_string()}</time>
-		<a href="/#@{post.created_at.unix}">#@{post.created_at.unix}</a>
-		@{app.fmt_tag(post.tags.split(' '))}
+		<time datetime="1970-01-01T00:00:00.000Z">Thu, 1 Jan 1970 00:00:00 UTC</time>
+		<a href="/#0">#0</a>
+		[ self ]
 		<div class="r">
-		<a href="/?meta=@{post.created_at.unix}">[share]</a>
-@if is_authed
-			<a href="/?edit=@{post.created_at.unix}">[e]</a>
+		<a href="/?meta=0">[share]</a>
+			<a href="/?edit=0">[e]</a>
 			<a href="/backup">[b]</a>
-			<a href="/delete/@{post.created_at.unix}">[x]</a>
-@end
+			<a href="/delete/0">[x]</a>
 		</div>
 	</header>
 	<main>
-		@{app.preprocess(post.content)}
+		<p>It was a dark and stormy night... fix</p>
+		<p><a href="https://www.youtube.com/watch?v=m798Szz5ix4">https://www.youtube.com/watch?v=m798Szz5ix4</a></p>
+		<figure class="spc">
+		    <div class="sic">
+		        <img loading="lazy" src="https://i.scdn.co/image/ab67616d0000b27305d5e9a4530da9e4069f4386" alt="Cover Art">
+		    </div>
+		    <div class="scc">
+		        <div class="scw">
+		            <a href="https://open.spotify.com/track/5szMqlli9wqhiza3Lkbzks">keepsake</a>
+		            <br>
+		            <a href="https://open.spotify.com/artist/3XE53aHb6V3KF4KlIyPyC8">carbine</a>
+		            <br>
+		            <audio controls preload="none"><source src="https://p.scdn.co/mp3-preview/62f12538d7846a7c117a51f3a6acd95fe8c79bb6" type="audio/mpeg"></audio>
+		        </div>
+		    </div>
+		</figure>
+		<!-- https://img.youtube.com/vi/m798Szz5ix4/0.jpg -->
+		<!-- https://i1.ytimg.com/vi_webp/m798Szz5ix4/hqdefault.webp -->
+		<figure class="ytc">
+			<p>test</p>
+			<div class="yttc">
+		        <img loading="lazy" src="https://img.youtube.com/vi/m798Szz5ix4/hqdefault.jpg" alt="Cover Art">
+			</div>
+		</figure>
+		<!-- https://www.youtube.com/watch?v=yvgMt5eIImQ -->
+		<figure class="ytc">
+			<p>test</p>
+	        <img loading="lazy" src="https://img.youtube.com/vi/yvgMt5eIImQ/hqdefault.jpg" alt="Cover Art">
+		</figure>
+		<figure class="ytc">
+			<a href="/">
+			<picture>
+			    <!-- <source srcset="https://i3.ytimg.com/vi/m798Szz5ix4/maxresdefault.jpg" media="(min-height: 91px)">
+			    <source srcset="https://i3.ytimg.com/vi/m798Szz5ix4/mqdefault.jpg" media="(min-height: 91px)">
+			    <source srcset="https://i3.ytimg.com/vi/m798Szz5ix4/0.jpg" media="(min-width: 0)"> -->
+				<source srcset="https://i3.ytimg.com/vi/m798Szz5ix4/maxresdefault.jpg" media="(min-width: 0px)">
+				<source srcset="https://i3.ytimg.com/vi/m798Szz5ix4/mqdefault.jpg" media="(min-width: 0px)">
+				<img alt="YouTube Thumbnail" src="https://i3.ytimg.com/vi/m798Szz5ix4/0.jpg" style="width:auto;">
+			</picture>
+			</a>
+		</figure>
+		<!-- https://i3.ytimg.com/vi/XkOpbLBzPsY/maxresdefault.jpg -->
+		<!-- https://i3.ytimg.com/vi/XkOpbLBzPsY/0.jpg -->
 	</main>
 </article>
-@if post.created_at.unix == 0
-<hr colour=gray>
-@end
 
-@end
+<hr colour=gray>
 
 </body>
 </html>

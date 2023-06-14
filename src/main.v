@@ -18,6 +18,7 @@ struct App {
 mut:
 	media_regex regex.RE
 	spotify_regex regex.RE
+	youtube_regex regex.RE
 	db sqlite.DB
 	last_edit_time time.Time // caches are invalidated at that time
 	cache []CacheEntry = []CacheEntry{cap: cache_max}
@@ -131,7 +132,7 @@ fn get_post(req string) ?(Post, bool) {
 
 	mut content := ?string(none)
 	mut tags := ?string(none)
-	mut created_at := time.Time{}
+	mut created_at := ?time.Time(none)
 	mut is_update := false
 
 	for word in req.split('&') {
@@ -156,7 +157,7 @@ fn get_post(req string) ?(Post, bool) {
 	}
 
 	post := Post{
-		created_at: if created_at.unix == 0 { time.now() } else { created_at } 
+		created_at: if unix := created_at { unix } else { time.now() } 
 		tags: tags?
 		content: content?
 	}
@@ -595,6 +596,7 @@ fn main() {
 	mut app := &App{
 		media_regex: regex.regex_opt(r'https?://\S+\.(?:(png)|(jpe?g)|(gif)|(svg)|(webp)|(mp4)|(webm)|(mov))')!
 		spotify_regex: regex.regex_opt(r'https?://open\.spotify\.com/track/(\w+)')!
+		youtube_regex: regex.regex_opt(r"https?://(?:www\.)?youtu(?:be\.com/watch\?v=)|(?:\.be/)(\w+)")!
 		db: sqlite.connect("data.sqlite")!
 		wal: os.open_append("wal.log")!
 		last_edit_time: time.now()
