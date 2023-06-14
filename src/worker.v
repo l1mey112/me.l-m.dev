@@ -1,6 +1,39 @@
 import spotify
 import yt
 
+type YT_ID = string
+type SPOTIFY_ID = string
+type Status = YT_ID | SPOTIFY_ID
+
+fn (mut app App) worker() {
+	mut payload := unsafe { Status{} }
+	
+	for {
+		mut sel := false
+
+		select {
+			payload = <-app.ch {
+				sel = true
+			}
+		}
+
+		if !sel { continue }
+
+		match payload {
+			YT_ID {
+				app.req_youtube(payload as YT_ID)
+			}
+			SPOTIFY_ID {
+				app.req_spotify(payload as SPOTIFY_ID)
+			}
+		}
+		println("done: ${payload}")
+
+		// kill caches
+		app.invalidate_cache()
+	}
+}
+
 [table: 'spotify_cache']
 struct SpotifyTrack {
 	id                int [primary; sql: serial]
@@ -37,17 +70,25 @@ fn (mut app App) get_spotify(url string, id string) ?SpotifyTrack {
 		return track[0]
 	}
 
-	// TODO: this may cause a race condition with `app.invalidate_cache`
-	//
-	spawn app.req_spotify(url)
+	app.ch <- SPOTIFY_ID(id)
 
 	return none
 }
 
-fn (mut app App) req_spotify(url string) {
+fn (mut app App) req_spotify(id string) {
+	count := sql app.db {
+		select count from SpotifyTrack where track_id == id
+	} or {
+		app.logln("spotify_cache(count_existing): failed ${err}")
+		return
+	}
+
+	if count != 0 {
+		return
+	}
+
 	// TODO: a malformed url may cause constant requests
-	// TODO: makes a request for no reason, check for existence in DB first
-	spotify_track := spotify.get(url) or { return } // will take time!
+	spotify_track := spotify.get('https://open.spotify.com/track/$id') or { return } // will take time!
 
 	track := SpotifyTrack{
 		track_id: spotify_track.id
@@ -58,25 +99,12 @@ fn (mut app App) req_spotify(url string) {
 		audio_preview_url: spotify_track.audio_preview_url or { '' }
 	}
 
-	count := sql app.db {
-		select count from SpotifyTrack where track_id == track.track_id
-	} or {
-		app.logln("spotify_cache(count_existing): failed ${err}")
-		return
-	}
-
-	if count != 0 {
-		return
-	}
-
 	sql app.db {
 		insert track into SpotifyTrack
 	} or {
 		app.logln("spotify_cache(insert): failed ${err}")
 		return
 	}
-
-	app.invalidate_cache()
 }
 
 [table: 'yt_thumb_cache']
@@ -98,13 +126,12 @@ fn (mut app App) get_youtube(id string) string {
 		return rows[0].yt_thumb
 	}
 
-	spawn app.req_youtube(id)
+	app.ch <- YT_ID(id)
 
 	return yt.yt_default
 }
 
 fn (mut app App) req_youtube(id string) {
-	println("req: ${id}")
 	count := sql app.db {
 		select count from YtThumbnail where yt_id == id
 	} or {
@@ -117,8 +144,6 @@ fn (mut app App) req_youtube(id string) {
 	}
 
 	if thumb := yt.get_embed(id) {
-		println("found: ${id} -> ${thumb}")
-
 		tthumb := YtThumbnail{yt_id: id, yt_thumb: thumb}
 
 		sql app.db {
@@ -127,9 +152,5 @@ fn (mut app App) req_youtube(id string) {
 			app.logln("yt_thumb_cache(insert): failed ${err}")
 			return
 		}
-
-		app.invalidate_cache()
-	} else {
-		println("failed: ${id}")
 	}
 }

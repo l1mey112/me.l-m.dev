@@ -22,5 +22,5 @@ pub fn get_embed(id string) ?string {
 		}
 	}
 
-	return none
+	return yt_default // worst case
 }

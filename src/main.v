@@ -8,6 +8,7 @@ import compress.gzip
 import net.urllib
 import time
 import strconv
+import sync.stdatomic
 
 const base_url = 'http://localhost:8080/'
 const cache_max = 8
@@ -23,7 +24,9 @@ mut:
 	last_edit_time time.Time // caches are invalidated at that time
 	cache []CacheEntry = []CacheEntry{cap: cache_max}
 	cache_rss ?string
+	cache_flag i64 // atomic
 	wal os.File // append only
+	ch chan Status // worker
 }
 
 fn (mut app App) logln(v string) {
@@ -32,10 +35,22 @@ fn (mut app App) logln(v string) {
 }
 
 fn (mut app App) invalidate_cache() {
-	// unsafe { app.cache.len = 0 }
-	app.last_edit_time = time.now()
-	app.cache = []CacheEntry{cap: cache_max} // force GC to collect old ptrs
-	app.cache_rss = none
+	if stdatomic.load_i64(&app.cache_flag) == 0 {
+		stdatomic.store_i64(&app.cache_flag, 1)
+	}
+}
+
+fn (mut app App) invalidate_cache_do() {
+	if stdatomic.load_i64(&app.cache_flag) == 1 {
+		println('caches invalid now')
+		
+		// unsafe { app.cache.len = 0 }
+		app.last_edit_time = time.now()
+		app.cache = []CacheEntry{cap: cache_max} // force GC to collect old ptrs
+		app.cache_rss = none
+
+		stdatomic.store_i64(&app.cache_flag, 0)
+	}
 }
 
 // return render, use_gzip
@@ -464,6 +479,9 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 	mut use_gzip := false
 	mut is_authed := true // TODO: verify!!
 
+	// atomic prepare request
+	app.invalidate_cache_do()
+
 	// check for gzip
 	for idx in 0..req.num_headers {
 		hdr := req.headers[idx]
@@ -600,6 +618,7 @@ fn main() {
 		db: sqlite.connect("data.sqlite")!
 		wal: os.open_append("wal.log")!
 		last_edit_time: time.now()
+		ch: chan Status{cap: 64}
 	}
 
 	/* C.atexit(fn [mut app] () {
@@ -617,5 +636,6 @@ fn main() {
 	})!
 
 	println("http://localhost:8080/")
+	spawn app.worker()
 	picoev.new(port: 8080, cb: &callback, user_data: app, max_read: 8192, max_write: 8192).serve() // RIGHT UNDER THE MAXIMUM i32 SIGNED VALUE
 }
