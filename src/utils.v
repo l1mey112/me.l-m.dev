@@ -1,4 +1,4 @@
-import mypicohttpparser as phttp
+import picohttpparser as phttp
 import mymarkdown
 import time
 import regex

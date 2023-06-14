@@ -1,7 +1,7 @@
 import db.sqlite
 import regex
-import mypicoev as picoev
-import mypicohttpparser as phttp
+import picoev
+import picohttpparser as phttp
 import os
 import strings
 import compress.gzip
