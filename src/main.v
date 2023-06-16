@@ -9,11 +9,11 @@ import net.urllib
 import time
 import strconv
 import sync.stdatomic
-import crypto.md5
+import crypto.sha256
 
 // const secret_password = os.getenv("SECRET")
 const secret_password = 'hellotest'
-const secret_cookie = md5.hexhash("${time.now().unix}-${secret_password}")
+const secret_cookie = sha256.hexhash("${time.now().unix}-${secret_password}")
 const base_url = 'http://localhost:8080/'
 const cache_max = 8
 const cache_min_gzip = 1500 // will rarely get hit
@@ -687,8 +687,6 @@ fn main() {
 
 	assert secret_password != ''
 	assert os.is_dir('backup')
-
-	println(secret_cookie)
 
 	os.signal_opt(.int, fn [mut app] (_ os.Signal) {
 		app.db.close() or {}
