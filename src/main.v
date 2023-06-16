@@ -370,7 +370,7 @@ fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res p
 			res.header_date()
 			res.html()
 			res.write_string('ETag: "${etag}"\r\n')
-			println('sent cached etag?')
+			res.write_string('Cache-Control: max-age=86400, must-revalidate\r\n')
 			if is_gzip {
 				res.write_string('Content-Encoding: gzip\r\n')
 			}
@@ -463,8 +463,8 @@ fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res p
 		app.enter_cache(query, tmpl)
 
 		if render, is_gzip := app.get_cache(query, use_gzip) {
-			println('sent etag')
 			res.write_string('ETag: "${etag}"\r\n')
+			res.write_string('Cache-Control: max-age=86400, must-revalidate\r\n')
 			if is_gzip {
 				res.write_string('Content-Encoding: gzip\r\n')
 			}
@@ -530,7 +530,6 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 
 			if str.len >= 3 {
 				// "x"
-				println("set etag: ${str}")
 				etag = str[1..str.len - 1].u64()
 			}
 		}
@@ -538,9 +537,9 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 
 	if e := etag {
 		if e == app.etag(req.path) && !is_authed {
-			println('not modified!')
 			res.write_string('HTTP/1.1 304 Not Modified\r\n')
 			res.write_string('ETag: "${e}"\r\n')
+			res.write_string('Cache-Control: max-age=86400, must-revalidate\r\n')
 			res.header_date()
 			res.write_string('Content-Length: 0\r\n\r\n')
 			res.end()
