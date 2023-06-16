@@ -20,7 +20,7 @@ fn mcmp(a &char, len int, b string) bool {
 	return unsafe { C.memcmp(a, b.str, b.len) == 0 }
 }
 
-const terminus = $embed_file('TerminusTTF.woff2').to_string()
+const terminus = $embed_file('tmpl/TerminusTTF.woff2').to_string()
 
 const query_all_tags = "WITH split(tag, tags_remaining) AS (
   -- Initial query
@@ -80,7 +80,7 @@ fn (mut app App) preprocess(text string) string {
 			return track_url
 		}
 
-		return $tmpl('spot_tmpl.html')
+		return $tmpl('tmpl/spot_tmpl.html')
 	})
 
 	etext := app.youtube_regex.replace_by_fn(itext, fn [mut app] (re regex.RE, text string, b1 int, b2 int) string {
@@ -89,7 +89,7 @@ fn (mut app App) preprocess(text string) string {
 
 		usable_thumb := app.get_youtube(video_id)
 
-		return $tmpl('yt_tmpl.html')
+		return $tmpl('tmpl/yt_tmpl.html')
 	})
 
 	return mymarkdown.to_html(etext)

@@ -256,7 +256,7 @@ fn (mut app App) serve_rss(mut res phttp.Response) {
 			panic('unreachable')
 		}
 
-		app.cache_rss = $tmpl('tmpl.xml')
+		app.cache_rss = $tmpl('tmpl/tmpl.xml')
 	}
 
 	res.http_ok()
@@ -321,7 +321,7 @@ fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res p
 		res.http_ok()
 		res.header_date()
 		res.html()
-		write_all(mut res, $tmpl('meta_tmpl.html'))
+		write_all(mut res, $tmpl('tmpl/meta_tmpl.html'))
 		return
 	}
 
@@ -454,7 +454,7 @@ fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res p
 
 	// do not cache authed pages
 
-	mut tmpl := $tmpl('tmpl.html')
+	mut tmpl := $tmpl('tmpl/tmpl.html')
 
 	res.http_ok()
 	res.header_date()
@@ -488,7 +488,7 @@ fn forbidden_go_auth(mut res phttp.Response) {
 	res.write_string('HTTP/1.1 403 Forbidden\r\n')
 	res.header_date()
 	res.html()
-	write_all(mut res, $tmpl('redirect_tmpl.html'))
+	write_all(mut res, $tmpl('tmpl/redirect_tmpl.html'))
 }
 
 fn see_other(location string, mut res phttp.Response) {
@@ -565,7 +565,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 			res.http_ok()
 			res.header_date()
 			res.html()
-			write_all(mut res, $tmpl('auth_tmpl.html'))
+			write_all(mut res, $tmpl('tmpl/auth_tmpl.html'))
 			return
 		} else if phttp.cmp(req.path, '/backup') {
 			if !is_authed {
@@ -642,7 +642,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 			res.write_string('HTTP/1.1 403 Forbidden\r\n')
 			res.header_date()
 			res.html()
-			write_all(mut res, $tmpl('auth_failed_tmpl.html'))
+			write_all(mut res, $tmpl('tmpl/auth_failed_tmpl.html'))
 			return
 		} else if phttp.cmp(req.path, '/post') {
 			if !is_authed {

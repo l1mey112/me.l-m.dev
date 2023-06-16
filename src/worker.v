@@ -27,7 +27,6 @@ fn (mut app App) worker() {
 				app.req_spotify(payload as SPOTIFY_ID)
 			}
 		}
-		println("done: ${payload}")
 
 		// kill caches
 		app.invalidate_cache()
