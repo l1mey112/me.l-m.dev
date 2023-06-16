@@ -10,6 +10,7 @@ import time
 import strconv
 import sync.stdatomic
 import crypto.sha256
+import hash
 
 // const secret_password = os.getenv("SECRET")
 const secret_password = 'hellotest'
@@ -119,7 +120,6 @@ mut:
 struct CacheEntry {
 	query Query
 	render string
-	etag // u64
 mut:
 	render_gzip ?string
 	pop u64
@@ -269,6 +269,10 @@ fn (mut app App) serve_rss(mut res phttp.Response) {
 	}
 }
 
+fn (app &App) etag(req string) u64 {
+	return hash.wyhash_c(req.str, u64(req.len), u64(app.last_edit_time.unix))
+}
+
 fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res phttp.Response) {
 	// edit post by unix (AUTH ONLY)
 	//   /?edit=123456789
@@ -358,11 +362,15 @@ fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res p
 
 	// always render new if authed, never cache authed pages
 
+	etag := app.etag(req)
+
 	if !is_authed {
 		if render, is_gzip := app.get_cache(query, use_gzip) {
 			res.http_ok()
 			res.header_date()
 			res.html()
+			res.write_string('ETag: "${etag}"\r\n')
+			println('sent cached etag?')
 			if is_gzip {
 				res.write_string('Content-Encoding: gzip\r\n')
 			}
@@ -455,6 +463,8 @@ fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res p
 		app.enter_cache(query, tmpl)
 
 		if render, is_gzip := app.get_cache(query, use_gzip) {
+			println('sent etag')
+			res.write_string('ETag: "${etag}"\r\n')
 			if is_gzip {
 				res.write_string('Content-Encoding: gzip\r\n')
 			}
@@ -492,6 +502,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 	mut app := unsafe { &App(data) }
 	mut use_gzip := false
 	mut is_authed := false
+	mut etag := ?u64(none)
 
 	// atomic prepare request
 	app.invalidate_cache_do()
@@ -514,6 +525,26 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 					break
 				}
 			}
+		} else if mcmp(hdr.name, hdr.name_len, 'If-None-Match') {
+			str := unsafe { (&u8(hdr.value)).vstring_with_len(hdr.value_len) }
+
+			if str.len >= 3 {
+				// "x"
+				println("set etag: ${str}")
+				etag = str[1..str.len - 1].u64()
+			}
+		}
+	}
+
+	if e := etag {
+		if e == app.etag(req.path) && !is_authed {
+			println('not modified!')
+			res.write_string('HTTP/1.1 304 Not Modified\r\n')
+			res.write_string('ETag: "${e}"\r\n')
+			res.header_date()
+			res.write_string('Content-Length: 0\r\n\r\n')
+			res.end()
+			return
 		}
 	}
 
@@ -528,6 +559,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 			res.http_ok()
 			res.header_date()
 			res.write_string('Content-Type: font/woff2\r\n')
+			res.write_string('Cache-Control: max-age=31536000\r\n') // never changes, 1 year
 			write_all(mut res, terminus)
 			return
 		} else if phttp.cmp(req.path, '/auth') {
@@ -602,7 +634,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 			if pwd == secret_password {
 				res.write_string('HTTP/1.1 303 See Other\r\n')
 				res.write_string('Location: /\r\n')
-				res.write_string('Set-Cookie: auth=${secret_cookie}; Secure; SameSite=Strict\r\n')
+				res.write_string('Set-Cookie: auth=${secret_cookie}; SameSite=Strict\r\n') // removed `Secure;`, often hosted without https
 				res.write_string('Content-Length: 0\r\n\r\n')
 				res.end()
 				return
