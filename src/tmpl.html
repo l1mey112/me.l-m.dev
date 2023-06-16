@@ -164,10 +164,17 @@
 	.sic image {
 		object-fit: cover;
 	}
+	.nvis {
+		text-decoration: none;
+		color: inherit;
+	}
 </style>
 
 <div class="cnt">
 
+@if !is_authed
+<a class="nvis" href="/auth">
+@end
 <pre>
   ▄▄▌    • ▌ ▄ ·.   
   ██•    ·██ ▐███▪  
@@ -175,6 +182,9 @@
   ▐█▌ ▄  ██ ██▌▐█▌  
   .▀▀▀   ▀▀  █▪▀▀▀  
 </pre>
+@if !is_authed
+</a>
+@end
 
 <div class="cc">
 <p>

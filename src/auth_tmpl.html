@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>me.l-m.dev</title>
+	<meta name="theme-color" content="#F7208B">
+</head>
+<body>
+<style>
+	@font-face {
+		font-family: 'Terminus (TTF)';
+		src: url('TerminusTTF.woff2') format('woff2');
+	}
+	html, input, p {
+		font-family: 'Terminus (TTF)';
+		font-size: 16px;
+		color: #938C81;
+	}
+	a {
+		color: #FF0000;
+	}
+	body {
+		background-color: #1d1e1e;
+		color: #938C81;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		height: 100vh;
+		margin: 0;
+	}
+	label {
+		cursor: pointer;
+	}
+	input[type=password] {
+		border: solid 2px #923B2C;
+		background-color: inherit;
+		border-style: dotted;
+	}
+	input:focus, textarea:focus {
+		outline: none;
+	}
+	input[type=submit] {
+		display: none;
+	}
+</style>
+<body>
+<form action=/auth method=POST>
+	<label>
+		auth: <input type="password" name="auth">
+	</label>
+	<label>
+		<input type="submit"> [ go ]
+	</label>
+</form>
+</body>
+</html>

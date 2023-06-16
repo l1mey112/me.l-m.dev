@@ -9,7 +9,11 @@ import net.urllib
 import time
 import strconv
 import sync.stdatomic
+import crypto.md5
 
+// const secret_password = os.getenv("SECRET")
+const secret_password = 'hellotest'
+const secret_cookie = md5.hexhash("${time.now().unix}-${secret_password}")
 const base_url = 'http://localhost:8080/'
 const cache_max = 8
 const cache_min_gzip = 1500 // will rarely get hit
@@ -42,8 +46,6 @@ fn (mut app App) invalidate_cache() {
 
 fn (mut app App) invalidate_cache_do() {
 	if stdatomic.load_i64(&app.cache_flag) == 1 {
-		println('caches invalid now')
-		
 		// unsafe { app.cache.len = 0 }
 		app.last_edit_time = time.now()
 		app.cache = []CacheEntry{cap: cache_max} // force GC to collect old ptrs
@@ -319,7 +321,11 @@ fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res p
 	}
 
 	// ignore and pass if not authed
-	if is_authed && phttp.cmpn(req, '/?edit=', 7) {
+	if phttp.cmpn(req, '/?edit=', 7) {
+		if !is_authed {
+			forbidden_go_auth(mut res)
+			return
+		}
 		unix := time.unix(i64(strconv.parse_uint(req[7..], 10, 64) or {
 			res.write_string('HTTP/1.1 400 Bad Request\r\n')
 			res.header_date()
@@ -467,6 +473,13 @@ fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res p
 	}
 }
 
+fn forbidden_go_auth(mut res phttp.Response) {
+	res.write_string('HTTP/1.1 403 Forbidden\r\n')
+	res.header_date()
+	res.html()
+	write_all(mut res, $tmpl('redirect_tmpl.html'))
+}
+
 fn see_other(location string, mut res phttp.Response) {
 	res.write_string('HTTP/1.1 303 See Other\r\n')
 	res.write_string('Location: ${location}\r\n')
@@ -477,23 +490,31 @@ fn see_other(location string, mut res phttp.Response) {
 fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 	mut app := unsafe { &App(data) }
 	mut use_gzip := false
-	mut is_authed := true // TODO: verify!!
+	mut is_authed := false
 
 	// atomic prepare request
 	app.invalidate_cache_do()
 
-	// check for gzip
+	// check for gzip and auth
 	for idx in 0..req.num_headers {
 		hdr := req.headers[idx]
 		if mcmp(hdr.name, hdr.name_len, 'Accept-Encoding') {
 			if unsafe { (&u8(hdr.value)).vstring_with_len(hdr.value_len).contains('gzip') } {
 				use_gzip = true
 			}
-			break
+		} else if mcmp(hdr.name, hdr.name_len, 'Cookie') {
+			str := unsafe { (&u8(hdr.value)).vstring_with_len(hdr.value_len) }
+
+			for v in str.split('; ') {
+				if v.starts_with('auth=') {
+					if v.after('auth=') == secret_cookie {
+						is_authed = true
+					}
+					break
+				}
+			}
 		}
 	}
-
-	_ = is_authed
 
 	if phttp.cmpn(req.method, 'GET ', 4) {
 		if phttp.cmp(req.path, '/') || phttp.cmpn(req.path, '/?', 2) {
@@ -508,57 +529,95 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 			res.write_string('Content-Type: font/woff2\r\n')
 			write_all(mut res, terminus)
 			return
-		} else if is_authed {
-			if phttp.cmp(req.path, '/backup') {
-				file := "backup/backup_${time.now().unix}.sqlite"
-				query := "vacuum into '${file}'"
-				ret := app.db.exec_none(query)
-				if sqlite.is_error(ret) {
-					app.logln("/backup: failed ${app.db.error_message(ret, query)}")
-					res.http_500()
-					res.end()
-					return
-				}
-				app.logln("/backup: created '${file}'")
-				see_other('/', mut res)
-				return
-			} else if phttp.cmpn(req.path, '/delete/', 8) {
-				post_created_at := time.unix(i64(strconv.parse_uint(req.path[8..], 10, 64) or {
-					res.write_string('HTTP/1.1 400 Bad Request\r\n')
-					res.header_date()
-					res.write_string('Content-Length: 0\r\n\r\n')
-					res.end()
-					return
-				}))
-
-				sql app.db {
-					delete from Post where created_at == post_created_at
-				} or {
-					res.write_string('HTTP/1.1 400 Bad Request\r\n')
-					res.header_date()
-					res.write_string('Content-Length: 0\r\n\r\n')
-					res.end()
-					return
-				}
-
-				app.logln("/delete: deleted /#${post_created_at.unix}")
-
-				// redirect to the next post
-				if row := app.db.exec_one('select created_at from posts where created_at > ${post_created_at.unix} order by created_at limit 1') {
-					nearest_created_at := row.vals[0].int() // created_at
-					if nearest_created_at != 0 {
-						see_other('/#${nearest_created_at}', mut res)
-						return
-					}
-				}
-				see_other('/', mut res)
+		} else if phttp.cmp(req.path, '/auth') {
+			res.http_ok()
+			res.header_date()
+			res.html()
+			write_all(mut res, $tmpl('auth_tmpl.html'))
+			return
+		} else if phttp.cmp(req.path, '/backup') {
+			if !is_authed {
+				forbidden_go_auth(mut res)
 				return
 			}
+
+			file := "backup/backup_${time.now().unix}.sqlite"
+			query := "vacuum into '${file}'"
+			ret := app.db.exec_none(query)
+			if sqlite.is_error(ret) {
+				app.logln("/backup: failed ${app.db.error_message(ret, query)}")
+				res.http_500()
+				res.end()
+				return
+			}
+			app.logln("/backup: created '${file}'")
+			see_other('/', mut res)
+			return
+		} else if phttp.cmpn(req.path, '/delete/', 8) {
+			if !is_authed {
+				forbidden_go_auth(mut res)
+				return
+			}
+
+			post_created_at := time.unix(i64(strconv.parse_uint(req.path[8..], 10, 64) or {
+				res.write_string('HTTP/1.1 400 Bad Request\r\n')
+				res.header_date()
+				res.write_string('Content-Length: 0\r\n\r\n')
+				res.end()
+				return
+			}))
+
+			sql app.db {
+				delete from Post where created_at == post_created_at
+			} or {
+				res.write_string('HTTP/1.1 400 Bad Request\r\n')
+				res.header_date()
+				res.write_string('Content-Length: 0\r\n\r\n')
+				res.end()
+				return
+			}
+
+			app.logln("/delete: deleted /#${post_created_at.unix}")
+
+			// redirect to the next post
+			if row := app.db.exec_one('select created_at from posts where created_at > ${post_created_at.unix} order by created_at limit 1') {
+				nearest_created_at := row.vals[0].int() // created_at
+				if nearest_created_at != 0 {
+					see_other('/#${nearest_created_at}', mut res)
+					return
+				}
+			}
+			see_other('/', mut res)
+			return
 		}
 		res.http_404()
 		res.end()
 	} else if phttp.cmpn(req.method, 'POST ', 5) {
-		if phttp.cmp(req.path, '/post') {
+		if phttp.cmp(req.path, '/auth') {
+			// auth=....
+			// Set-Cookie: cookieName=cookieValue; Secure; SameSite=Strict
+			pwd := req.body.all_after('auth=')
+
+			if pwd == secret_password {
+				res.write_string('HTTP/1.1 303 See Other\r\n')
+				res.write_string('Location: /\r\n')
+				res.write_string('Set-Cookie: auth=${secret_cookie}; Secure; SameSite=Strict\r\n')
+				res.write_string('Content-Length: 0\r\n\r\n')
+				res.end()
+				return
+			}
+
+			res.write_string('HTTP/1.1 403 Forbidden\r\n')
+			res.header_date()
+			res.html()
+			write_all(mut res, $tmpl('auth_failed_tmpl.html'))
+			return
+		} else if phttp.cmp(req.path, '/post') {
+			if !is_authed {
+				forbidden_go_auth(mut res)
+				return
+			}
+
 			// body contains urlencoded data
 			post, _ := get_post(req.body) or {
 				res.write_string('HTTP/1.1 400 Bad Request\r\n')
@@ -600,10 +659,10 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 
 			app.invalidate_cache()
 			see_other('/#${post.created_at.unix}', mut res)
-		} else {
-			res.http_404()
-			res.end()
+			return
 		}
+		res.http_404()
+		res.end()
 	} else {
 		res.http_405()
 		res.end()
@@ -618,7 +677,7 @@ fn main() {
 		db: sqlite.connect("data.sqlite")!
 		wal: os.open_append("wal.log")!
 		last_edit_time: time.now()
-		ch: chan Status{cap: 64}
+		ch: chan Status{cap: 8}
 	}
 
 	/* C.atexit(fn [mut app] () {
@@ -626,7 +685,10 @@ fn main() {
 		println('\natexit: goodbye')
 	}) */
 
+	assert secret_password != ''
 	assert os.is_dir('backup')
+
+	println(secret_cookie)
 
 	os.signal_opt(.int, fn [mut app] (_ os.Signal) {
 		app.db.close() or {}
