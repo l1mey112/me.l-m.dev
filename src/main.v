@@ -119,6 +119,7 @@ mut:
 struct CacheEntry {
 	query Query
 	render string
+	etag // u64
 mut:
 	render_gzip ?string
 	pop u64
