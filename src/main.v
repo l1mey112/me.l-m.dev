@@ -559,7 +559,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 			res.http_ok()
 			res.header_date()
 			res.write_string('Content-Type: font/woff2\r\n')
-			res.write_string('Cache-Control: max-age=31536000\r\n') // never changes, 1 year
+			res.write_string('Cache-Control: max-age=31536000, immutable\r\n') // never changes, 1 year
 			write_all(mut res, terminus)
 			return
 		} else if phttp.cmp(req.path, '/auth') {
