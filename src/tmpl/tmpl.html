@@ -8,6 +8,7 @@
 	<meta content="me.l-m.dev | Thought Stream" property="og:title">
 	<meta content="@{posts_total} total posts, @{all_tags.len} unique tags" property="og:description">
 	<meta name="theme-color" content="#F7208B">
+	<link rel="alternate" type="application/atom+xml" title="RSS" href="/index.xml" />
 </head>
 <body>
 <style>
@@ -111,10 +112,9 @@
 	}
 	figure {
 		display: flex;
-		/* width: calc(100% + 2em); */
 		margin-left: -1em;
 		margin-right: -1em;
-		position: relative; /* Add this line */
+		position: relative;
 	}
 	.spc {
 		border-top: 1px dotted #1ed760;
@@ -129,15 +129,6 @@
 	.yti {
 		max-width: 20em;
 	}
-	/* .pi {
-		position: absolute;
-		top: 50%;
-		left: 50%;
-		transform: translate(-50%, -50%);
-		width: 60px;
-		height: 60px;
-		background-image: url("data:image/svg+xml,%3Csvg class='play-icon' viewBox='0 0 64 64' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M22 14l26 18-26 18z' fill='white' /%3E%3C/svg%3E");
-	} */
 	.scw {
 		color: #1ed760;
 		width: 100%;
@@ -185,8 +176,8 @@
 <div class="cc">
 <p>
 <a href="https://l-m.dev">https://l-m.dev</a> - © l-m.dev 2023<br>
-Welcome! - @{posts_total} total posts.<br>
-Zero JavaScript, Zero Tracking.
+Welcome! - @{posts_total} total posts. [<a href="/index.xml">RSS</a>]<br>
+Created with &lt;3 with <a href="https://vlang.io/">V</a>.
 </p>
 </div>
 
@@ -201,7 +192,7 @@ Zero JavaScript, Zero Tracking.
 @for idx, tag in all_tags
 
 @if idx < 30
-<div class="ib im" style="font-size: @{2.0 - f64(idx) * 0.025}em;">
+<div class="ib im" style="font-size: @{2.0 - f64(idx) * 0.03}em;">
 @else
 <div class="ib">
 @end
