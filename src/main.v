@@ -12,10 +12,9 @@ import sync.stdatomic
 import crypto.sha256
 import hash
 
-// const secret_password = os.getenv("SECRET")
-const secret_password = 'hellotest'
+const secret_password = os.getenv("SECRET")
 const secret_cookie = sha256.hexhash("${time.now().unix}-${secret_password}")
-const base_url = 'http://localhost:8080/'
+const base_url = 'https://me.l-m.dev/'
 const cache_max = 8
 const cache_min_gzip = 1500 // will rarely get hit
 

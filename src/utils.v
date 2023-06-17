@@ -55,7 +55,11 @@ fn write_all(mut res phttp.Response, v string) {
 
 	if (i64(res.buf) - i64(res.buf_start) + i64(v.len)) >= 8192 {
 		res.end()
-		C.write(res.fd, v.str, v.len)
+
+		mut len := 0
+		for len < v.len {
+			len += C.write(res.fd, unsafe { v.str + len }, v.len - len)
+		}
 	} else {
 		res.write_string(v)
 		res.end()
