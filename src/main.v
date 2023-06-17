@@ -4,7 +4,7 @@ import picoev
 import picohttpparser as phttp
 import os
 import strings
-import compress.gzip
+// import compress.gzip
 import net.urllib
 import time
 import strconv
@@ -365,7 +365,7 @@ fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res p
 	etag := app.etag(req)
 
 	if !is_authed {
-		if render, is_gzip := app.get_cache(query, use_gzip) {
+		if render, _ := app.get_cache(query, use_gzip) {
 			res.http_ok()
 			res.header_date()
 			res.html()
@@ -462,7 +462,7 @@ fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res p
 	if !is_authed {
 		app.enter_cache(query, tmpl)
 
-		if render, is_gzip := app.get_cache(query, use_gzip) {
+		if render, _ := app.get_cache(query, use_gzip) {
 			res.write_string('ETag: "${etag}"\r\n')
 			res.write_string('Cache-Control: max-age=86400, must-revalidate\r\n')
 			/* if is_gzip {
