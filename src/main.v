@@ -639,6 +639,8 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 				return
 			}
 
+			app.logln("/auth: ${ip_str(res.fd)}: failed")
+
 			res.write_string('HTTP/1.1 403 Forbidden\r\n')
 			res.header_date()
 			res.html()
