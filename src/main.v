@@ -12,6 +12,7 @@ import sync.stdatomic
 import crypto.sha256
 import hash
 
+const env_port = os.getenv("PORT")
 const secret_password = os.getenv("SECRET")
 const secret_cookie = sha256.hexhash("${time.now().unix}-${secret_password}")
 const base_url = 'https://me.l-m.dev/'
@@ -728,7 +729,10 @@ fn main() {
 		exit(0)
 	})!
 
-	println("http://localhost:8080/")
+	eport := env_port.int()
+	port := if eport == 0 { 8080 } else { eport }
+
+	println("http://localhost:${port}/")
 	spawn app.worker()
-	picoev.new(port: 8080, cb: &callback, user_data: app, max_read: 8192, max_write: 8192).serve() // RIGHT UNDER THE MAXIMUM i32 SIGNED VALUE
+	picoev.new(port: port, cb: &callback, user_data: app, max_read: 8192, max_write: 8192).serve() // RIGHT UNDER THE MAXIMUM i32 SIGNED VALUE
 }
