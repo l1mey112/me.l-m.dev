@@ -159,6 +159,15 @@
 		text-decoration: none;
 		color: inherit;
 	}
+	pre {
+		overflow-x: auto;
+	}
+	code {
+		color: #e571f0;
+	}
+	code:not(pre code):before, code:not(pre code):after {
+		content: "`";
+	}
 </style>
 
 <div class="cnt">
@@ -191,8 +200,8 @@ Created with &lt;3 with <a href="https://vlang.io/">V</a>. [<a href="/#latest">L
 <form action=/ method=GET>
 @for idx, tag in all_tags
 
-@if idx < 30
-<div class="ib im" style="font-size: @{2.0 - f64(idx) * 0.03}em;">
+@if idx < 50
+<div class="ib" style="font-size: @{2.0 - f64(idx) * 0.02}em;">
 @else
 <div class="ib">
 @end
