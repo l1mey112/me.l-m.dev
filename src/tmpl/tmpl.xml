@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
 <channel>
-	<title>lifestream2</title>
+	<title>me.l-m.dev</title>
 	<link>@{base_url}</link>
-	<description>lifestream2</description>
+	<description>a thought stream</description>
 	<language>en-us</language>
 	<copyright>Copyright 2023, l-m.dev</copyright>
 	<generator>The V Programming Language</generator>
