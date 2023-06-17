@@ -66,7 +66,7 @@ fn (mut app App) get_cache(query Query, use_gzip bool) ?(string, bool) {
 			c.pop++
 
 			// only gzip larger than 1500 bytes
-			if use_gzip && c.render.len > cache_min_gzip {
+			/* if use_gzip && c.render.len > cache_min_gzip {
 				if render_gzip := c.render_gzip {
 					return render_gzip, true
 				}
@@ -75,7 +75,7 @@ fn (mut app App) get_cache(query Query, use_gzip bool) ?(string, bool) {
 					c.render_gzip = render_gzip
 					return render_gzip, true
 				}
-			}
+			} */
 			return c.render, false
 		}
 	}
@@ -371,9 +371,9 @@ fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res p
 			res.html()
 			res.write_string('ETag: "${etag}"\r\n')
 			res.write_string('Cache-Control: max-age=86400, must-revalidate\r\n')
-			if is_gzip {
+			/* if is_gzip {
 				res.write_string('Content-Encoding: gzip\r\n')
-			}
+			} */
 			write_all(mut res, render)
 			return
 		}
@@ -465,20 +465,20 @@ fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res p
 		if render, is_gzip := app.get_cache(query, use_gzip) {
 			res.write_string('ETag: "${etag}"\r\n')
 			res.write_string('Cache-Control: max-age=86400, must-revalidate\r\n')
-			if is_gzip {
+			/* if is_gzip {
 				res.write_string('Content-Encoding: gzip\r\n')
-			}
+			} */
 			write_all(mut res, render)
 		}
 	} else {
 		// compress on the go, this cannot be cached
 
-		if use_gzip && tmpl.len > cache_min_gzip {
+		/* if use_gzip && tmpl.len > cache_min_gzip {
 			if val := gzip.compress(tmpl.bytes()) {
 				tmpl = val.bytestr()
 				res.write_string('Content-Encoding: gzip\r\n')
 			}
-		}
+		} */
 
 		write_all(mut res, tmpl)
 	}
