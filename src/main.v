@@ -316,7 +316,6 @@ fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res p
 		}
 
 		post := rows[0]
-		description := "#${post.created_at.unix} ${app.fmt_tag(post.tags.split(' '))}"
 
 		res.http_ok()
 		res.header_date()
