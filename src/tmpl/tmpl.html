@@ -177,7 +177,7 @@
 <p>
 <a href="https://l-m.dev">https://l-m.dev</a> - © l-m.dev 2023<br>
 Welcome! - @{posts_total} total posts. [<a href="/index.xml">RSS</a>]<br>
-Created with &lt;3 with <a href="https://vlang.io/">V</a>.
+Created with &lt;3 with <a href="https://vlang.io/">V</a>. [<a href="/#latest">LATEST</a>]
 </p>
 </div>
 
@@ -248,6 +248,7 @@ Created with &lt;3 with <a href="https://vlang.io/">V</a>.
 @for post in posts
 
 @if post.created_at.unix == latest_post_unix
+<div id="latest">
 <article id="@{post.created_at.unix}" class=lat>
 @else
 <article id="@{post.created_at.unix}">
@@ -269,6 +270,9 @@ Created with &lt;3 with <a href="https://vlang.io/">V</a>.
 		@{app.preprocess(post.content)}
 	</main>
 </article>
+@if post.created_at.unix == latest_post_unix
+</div>
+@end
 @if post.created_at.unix == 0 && !edit_is
 <hr colour=gray>
 @end
