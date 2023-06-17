@@ -4,7 +4,7 @@
 	<meta charset="UTF-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<meta content="me.l-m.dev | #@{post.created_at.unix}" property="og:title">
-	<meta content="@{app.fmt_tag(post.tags.split(' '))}" property="og:description">
+	<meta content="@{tags}" property="og:description">
 	<meta name="theme-color" content="#F7208B">
 	<link rel="canonical" href="/#@{post.created_at.unix}"/>
 	<meta http-equiv="refresh" content="0; url=/#@{post.created_at.unix}">
