@@ -479,7 +479,7 @@ fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res p
 				res.write_string('Content-Encoding: gzip\r\n')
 			}
 		} */
-
+		res.write_string('Cache-Control: no-cache\r\n')
 		write_all(mut res, tmpl)
 	}
 }
