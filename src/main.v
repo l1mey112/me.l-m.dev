@@ -1,3 +1,6 @@
+// Copyright (c) 2023 l-m.dev. All rights reserved.
+// Use of this source code is governed by an AGPL license
+// that can be found in the LICENSE file.
 import db.sqlite
 import regex
 import picoev
@@ -699,10 +702,12 @@ fn main() {
 		ch: chan Status{cap: 8}
 	}
 
-	C.atexit(fn [mut app] () {
+	os.signal_opt(.int, fn [mut app] (_ os.Signal) {
 		app.db.close() or {}
-		println('atexit: goodbye')
-	})
+		app.wal.close()
+		println('\nsigint: goodbye')
+		exit(0)
+	})!
 
 	assert secret_password != ''
 	assert os.is_dir('backup')
