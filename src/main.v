@@ -431,12 +431,16 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 		return
 	}
 
-	latest_post_unix := app.raw_query("select created_at from posts order by created_at desc limit 1") or {
+	mut latest_post_unix := i64(0)
+	latest_post_unix_rows := app.raw_query("select created_at from posts order by created_at desc limit 1") or {
 		app.logln("/: failed ${err}")
 		res.http_500()
 		res.end()
 		return
-	}[0].vals[0].i64()
+	}
+	if latest_post_unix_rows.len != 0 {
+		latest_post_unix_rows[0].vals[0].i64()
+	}
 
 	// do not cache authed pages
 
