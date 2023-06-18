@@ -4,7 +4,6 @@ import picoev
 import picohttpparser as phttp
 import os
 import strings
-// import compress.gzip
 import net.urllib
 import time
 import strconv
@@ -17,7 +16,6 @@ const secret_password = os.getenv("SECRET")
 const secret_cookie = sha256.hexhash("${time.now().unix}-${secret_password}")
 const base_url = 'https://me.l-m.dev/'
 const cache_max = 8
-const cache_min_gzip = 1500 // will rarely get hit
 
 [heap]
 struct App {
@@ -57,7 +55,7 @@ fn (mut app App) invalidate_cache_do() {
 }
 
 // return render, use_gzip
-fn (mut app App) get_cache(query Query, use_gzip bool) ?(string, bool) {
+fn (mut app App) get_cache(query Query) ?string {
 	// get cache value, increment pop
 	// if gzip compression is needed, generate it on demand and cache result
 
@@ -65,18 +63,7 @@ fn (mut app App) get_cache(query Query, use_gzip bool) ?(string, bool) {
 		if c.query == query {
 			c.pop++
 
-			// only gzip larger than 1500 bytes
-			/* if use_gzip && c.render.len > cache_min_gzip {
-				if render_gzip := c.render_gzip {
-					return render_gzip, true
-				}
-				if val := gzip.compress(c.render.bytes()) {
-					render_gzip := val.bytestr()
-					c.render_gzip = render_gzip
-					return render_gzip, true
-				}
-			} */
-			return c.render, false
+			return c.render
 		}
 	}
 
@@ -121,7 +108,6 @@ struct CacheEntry {
 	query Query
 	render string
 mut:
-	render_gzip ?string
 	pop u64
 }
 
@@ -273,7 +259,7 @@ fn (app &App) etag(req string) u64 {
 	return hash.wyhash_c(req.str, u64(req.len), u64(app.last_edit_time.unix))
 }
 
-fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res phttp.Response) {
+fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) {
 	// edit post by unix (AUTH ONLY)
 	//   /?edit=123456789
 
@@ -365,7 +351,7 @@ fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res p
 	etag := app.etag(req)
 
 	if !is_authed {
-		if render, _ := app.get_cache(query, use_gzip) {
+		if render := app.get_cache(query) {
 			res.http_ok()
 			res.header_date()
 			res.html()
@@ -462,7 +448,7 @@ fn (mut app App) serve_home(req string, is_authed bool, use_gzip bool, mut res p
 	if !is_authed {
 		app.enter_cache(query, tmpl)
 
-		if render, _ := app.get_cache(query, use_gzip) {
+		if render := app.get_cache(query) {
 			res.write_string('ETag: "${etag}"\r\n')
 			res.write_string('Cache-Control: max-age=86400, must-revalidate\r\n')
 			/* if is_gzip {
@@ -500,7 +486,6 @@ fn see_other(location string, mut res phttp.Response) {
 
 fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 	mut app := unsafe { &App(data) }
-	mut use_gzip := false
 	mut is_authed := false
 	mut etag := ?u64(none)
 
@@ -510,11 +495,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 	// check for gzip and auth
 	for idx in 0..req.num_headers {
 		hdr := req.headers[idx]
-		if mcmp(hdr.name, hdr.name_len, 'Accept-Encoding') {
-			if unsafe { (&u8(hdr.value)).vstring_with_len(hdr.value_len).contains('gzip') } {
-				use_gzip = true
-			}
-		} else if mcmp(hdr.name, hdr.name_len, 'Cookie') {
+		if mcmp(hdr.name, hdr.name_len, 'Cookie') {
 			str := unsafe { (&u8(hdr.value)).vstring_with_len(hdr.value_len) }
 
 			for v in str.split('; ') {
@@ -549,7 +530,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 
 	if phttp.cmpn(req.method, 'GET ', 4) {
 		if phttp.cmp(req.path, '/') || phttp.cmpn(req.path, '/?', 2) {
-			app.serve_home(req.path, is_authed, use_gzip, mut res)
+			app.serve_home(req.path, is_authed, mut res)
 			return
 		} else if phttp.cmp(req.path, '/index.xml') {
 			app.serve_rss(mut res)
