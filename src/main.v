@@ -701,17 +701,11 @@ fn main() {
 
 	C.atexit(fn [mut app] () {
 		app.db.close() or {}
+		println('atexit: goodbye')
 	})
 
 	assert secret_password != ''
 	assert os.is_dir('backup')
-
-	/* os.signal_opt(.int, fn [mut app] (_ os.Signal) {
-		app.db.close() or {}
-		app.wal.close()
-		println('\nsigint: goodbye')
-		exit(0)
-	})! */
 
 	eport := env_port.int()
 	port := if eport == 0 { 8080 } else { eport }
