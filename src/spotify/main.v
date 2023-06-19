@@ -121,3 +121,10 @@ pub fn get(url string) ?Track {
 		audio_preview_url: preivew_url
 	}
 }
+
+// TODO: another way this can be accomplished is with this:
+//       -- https://open.spotify.com/oembed?url=<URL>
+//
+//       it will return JSON containing "thumbnail_url"
+//       however it will not contain the 30 second audio
+//
