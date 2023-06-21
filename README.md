@@ -61,3 +61,17 @@ The search functionality uses a case insensitive glob query.
 - I created this website for myself in V.
 - I have open sourced it under AGPLV3.
 - Go visit [me.l-m.dev](https://me.l-m.dev).
+
+# how to build
+
+Building with V is easy, simply have the V compiler installed on your system and run `v .` in the root directory of the repository.
+
+You can get a copy of the v compiler [here](https://vlang.io/).
+
+# running the webserver
+
+The server expects a few things in order to run:
+- There must be a `backup/` folder in the working directory of the executable.
+- The `SECRET` envvar should be set, and is used in `https://<url>/auth`.
+- The `base_url` const in `main.v` should be changed to point to your website's URL.
+- Optionally, the `PORT` envvar can be set, but defaults to port 8080.
