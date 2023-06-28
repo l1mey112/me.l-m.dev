@@ -692,8 +692,8 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 fn main() {
 	mut app := &App{
 		media_regex: regex.regex_opt(r'https?://\S+\.(?:(png)|(jpe?g)|(gif)|(svg)|(webp)|(mp4)|(webm)|(mov))')!
-		spotify_regex: regex.regex_opt(r'https?://open\.spotify\.com/track/(\w+)')!
-		youtube_regex: regex.regex_opt(r"https?://(?:www\.)?youtu(?:be\.com/watch\?v=)|(?:\.be/)(\w+)")!
+		spotify_regex: regex.regex_opt(r'https?://open\.spotify\.com/track/(\S+)')!
+		youtube_regex: regex.regex_opt(r"https?://(?:www\.)?youtu(?:be\.com/watch\?v=)|(?:\.be/)(\S+)")!
 		db: sqlite.connect("data.sqlite")!
 		wal: os.open_append("wal.log")!
 		last_edit_time: time.now()
