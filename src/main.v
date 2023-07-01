@@ -18,8 +18,8 @@ const env_port = os.getenv("PORT")
 const secret_password = os.getenv("SECRET")
 const secret_cookie = sha256.hexhash("${time.now().unix}-${secret_password}")
 const base_url = 'https://me.l-m.dev/'
-const cache_max = 8
-const posts_per_page = 5
+const cache_max = 32 // larger!
+const posts_per_page = 25
 
 [heap]
 struct App {
@@ -370,9 +370,6 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 			res.html()
 			res.write_string('ETag: "${etag}"\r\n')
 			res.write_string('Cache-Control: max-age=86400, must-revalidate\r\n')
-			/* if is_gzip {
-				res.write_string('Content-Encoding: gzip\r\n')
-			} */
 			write_all(mut res, render)
 			return
 		}
@@ -739,7 +736,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 			}
 
 			app.invalidate_cache()
-			see_other('/#${post.created_at.unix}', mut res)
+			see_other('/?p=${post.created_at.unix}##', mut res)
 			return
 		}
 		res.http_404()
