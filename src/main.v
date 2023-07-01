@@ -122,7 +122,7 @@ mut:
 	pop u64
 }
 
-fn (app &App) fmt_tag(tags []string) string {
+fn fmt_tag(tags []string) string {
 	if tags.len == 0 {
 		return ''
 	}
@@ -273,6 +273,28 @@ fn (app &App) etag(req string) u64 {
 	return hash.wyhash_c(req.str, u64(req.len), u64(app.last_edit_time.unix))
 }
 
+fn construct_article_header(created_at i64, latest i64, selected ?i64) string {	
+	mut ret := if created_at == latest {
+		'<div id=latest><article'
+	} else {
+		'<article'
+	}
+
+	if sel := selected {
+		if sel == created_at {
+			ret += ' class=lat id="#"'
+		}
+	} else if latest == created_at {
+		ret += ' class=lat'
+	}
+
+	return ret + '>'
+}
+
+fn construct_tags(post &Post) string {
+	return fmt_tag(post.tags.split(' '))
+}
+
 fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) {
 	// edit post by unix (AUTH ONLY)
 	//   /?edit=123456789
@@ -316,7 +338,7 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 		}
 
 		post := rows[0]
-		tags := app.fmt_tag(post.tags.split(' '))
+		tags := fmt_tag(post.tags.split(' '))
 
 		res.http_ok()
 		res.header_date()
@@ -392,6 +414,7 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 	mut db_query := "select * from posts"
 
 	mut page := u64(0)
+	mut post_to_select := ?i64(none)
 
 	if !edit_is {
 		match mut query {
@@ -420,6 +443,7 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 				page = query.page
 			}
 			PostQuery {
+				post_to_select = query.post
 				if query.post != 0 {
 					rows := app.raw_query("select count(*) from posts where (created_at >= ${query.post} or created_at == 0) order by (case when created_at = 0 then 1 else 2 end), created_at desc;") or {
 						app.logln("/: failed ${err}")
@@ -486,7 +510,16 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 		return
 	}
 	if latest_post_unix_rows.len != 0 {
-		latest_post_unix_rows[0].vals[0].i64()
+		latest_post_unix = latest_post_unix_rows[0].vals[0].i64()
+	}
+
+	mut selected_post_idx := -1
+	if sel := post_to_select {
+		for idx, p in posts {
+			if p.created_at.unix == sel {
+				selected_post_idx = idx 
+			}
+		}
 	}
 
 	// do not cache authed pages

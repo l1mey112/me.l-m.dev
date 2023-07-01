@@ -5,10 +5,15 @@
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>me.l-m.dev</title>
-	<meta content="me.l-m.dev" property="og:title">
-	<meta content="@{posts_total} total posts, @{all_tags.len} unique tags" property="og:description">
 	<meta name="theme-color" content="#F7208B">
 	<link rel="alternate" type="application/atom+xml" title="RSS" href="/index.xml" />
+@if selected_post_idx != -1
+	<meta content="me.l-m.dev | #@{posts[selected_post_idx].created_at.unix}" property="og:title">
+	<meta content="@{construct_tags(posts[selected_post_idx])}" property="og:description">
+@else
+	<meta content="me.l-m.dev" property="og:title">
+	<meta content="@{posts_total} total posts, @{all_tags.len} unique tags" property="og:description">
+@end
 </head>
 <body>
 <style>
@@ -259,16 +264,11 @@ Created with &lt;3 with <a href="https://vlang.io/">V</a>. [<a href="/#latest">L
 
 @for post in posts
 
-@if post.created_at.unix == latest_post_unix
-<div id="latest">
-<article id="@{post.created_at.unix}" class=lat>
-@else
-<article id="@{post.created_at.unix}">
-@end
+@{construct_article_header(post.created_at.unix, latest_post_unix, post_to_select)}
 	<header>
 		<time datetime="@{post.created_at.format_rfc3339()}">@{post.created_at.utc_string()}</time>
-		<a href="/#@{post.created_at.unix}">#@{post.created_at.unix}</a>
-		@{app.fmt_tag(post.tags.split(' '))}
+		<a>#@{post.created_at.unix}</a>
+		@{fmt_tag(post.tags.split(' '))}
 		<div class="r">
 		<a href="/?meta=@{post.created_at.unix}">[share]</a>
 @if is_authed
