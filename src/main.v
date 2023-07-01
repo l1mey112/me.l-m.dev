@@ -848,12 +848,11 @@ fn main() {
 		ch: chan Status{cap: 8}
 	}
 
-	os.signal_opt(.int, fn [mut app] (_ os.Signal) {
+	C.atexit(fn [mut app] () {
 		app.db.close() or {}
 		app.wal.close()
-		println('\nsigint: goodbye')
-		exit(0)
-	})!
+		println('\ngoodbye')
+	})
 
 	assert secret_password != ''
 	assert os.is_dir('backup')
