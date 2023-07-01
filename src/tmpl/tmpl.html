@@ -73,7 +73,7 @@
 		justify-content: center;
 		align-items: center;
 	}
-	a {
+	a, .s {
 		color: #FF0000;
 	}
 	label strong, .cl {
@@ -281,9 +281,9 @@ Created with &lt;3 with <a href="https://vlang.io/">V</a>. [<a href="/#latest">L
 @{construct_article_header(post.created_at.unix, latest_post_unix, post_to_select)}
 	<header>
 		<time datetime="@{post.created_at.format_rfc3339()}">@{post.created_at.utc_string()}</time>
-		<a>#@{post.created_at.unix}</a>
+		<p class=s>#@{post.created_at.unix}</p>
 		@{construct_tags(post)}
-		<div class="r">
+		<div class=r>
 		<a href="/?meta=@{post.created_at.unix}">[share]</a>
 @if is_authed
 			<a href="/?edit=@{post.created_at.unix}">[e]</a>
