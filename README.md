@@ -23,7 +23,9 @@ A large amount of templating, messing around with `sqlite3`, a single threaded `
 
 I worked hard to make a nice interface, one which is fast and dynamic, and uses zero JavaScript. I relied a lot on the existing HTTP standard + URLs, to jump you to specific parts of the page and use HTML forms to change content. 
 
-Jump links using `/#00000000` are used extensively by the backend to route the client.
+Jump links using `/?p=00000000##` are used extensively by the backend to route the client.
+
+Proper configurable pagination is supported.
 
 # safe youtube + spotify embed
 
