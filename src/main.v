@@ -292,7 +292,86 @@ fn construct_article_header(created_at i64, latest i64, selected ?i64) string {
 }
 
 fn construct_tags(post &Post) string {
+	if post.tags == '' {
+		return ''
+	}
+	
 	return fmt_tag(post.tags.split(' '))
+}
+
+fn construct_tags_query(tags []string) string {
+	mut sb := strings.new_builder(24)
+
+	for idx, tag in tags {
+		sb.write_string("tag_${urllib.query_escape(tag)}=on")
+		if idx + 1 < tags.len {
+			sb.write_u8(`&`)
+		}
+	}
+
+	return sb.str()
+}
+
+fn construct_next(query Query, post_page u64, no_next bool) ?string {
+	if no_next {
+		return none
+	}
+
+	match query {
+		SearchQuery{
+			mut q := '?page=${query.page + 1}'
+
+			if query.search != '' {
+				q += '&search=${urllib.query_escape(query.search)}'
+			}
+
+			if query.tags.len != 0 {
+				q += '&${construct_tags_query(query.tags)}'
+			}
+
+			return q
+		}
+		PostQuery{
+			return '?page=${post_page + 1}'
+		}
+	}
+}
+
+fn construct_previous(query Query, post_page u64) ?string {
+	if post_page == 0 {
+		return none
+	}
+
+	match query {
+		SearchQuery{
+			if query.page == 0 {
+				return none
+			}
+
+			mut q := '?'
+
+			if query.page != 1 {
+				q += 'page=${query.page - 1}'
+			}
+
+			if query.search != '' {
+				q += '&search=${urllib.query_escape(query.search)}'
+			}
+
+			if query.tags.len != 0 {
+				q += '&${construct_tags_query(query.tags)}'
+			}
+
+			if q == '?' {
+				return ''
+			}
+
+			return q
+		}
+		PostQuery{
+			return '?page=${post_page - 1}'
+		}
+	}
 }
 
 fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) {
@@ -487,6 +566,9 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 	}
 
 	// do not cache authed pages
+
+	no_next := posts.len < posts_per_page
+	nav := $tmpl('tmpl/nav_tmpl.html')
 
 	mut tmpl := $tmpl('tmpl/tmpl.html')
 

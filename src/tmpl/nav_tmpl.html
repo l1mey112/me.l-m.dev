@@ -1,0 +1,14 @@
+@if !edit_is
+<nav>
+@if prev := construct_previous(query, page)
+	<a href="/@{prev}">← Previous</a>
+@else
+	<div></div>
+@end
+@if next := construct_next(query, page, no_next)
+	<a href="/@{next}">Next →</a>
+@else
+	<div></div>
+@end
+</nav>
+@end
