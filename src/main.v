@@ -19,6 +19,7 @@ const secret_password = os.getenv("SECRET")
 const secret_cookie = sha256.hexhash("${time.now().unix}-${secret_password}")
 const base_url = 'https://me.l-m.dev/'
 const cache_max = 8
+const posts_per_page = 30
 
 [heap]
 struct App {
@@ -368,6 +369,7 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 		}
 	}
 
+	mut page := 0
 	mut db_query := "select * from posts"
 
 	if !edit_is {
@@ -402,6 +404,8 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 	} else {
 		db_query += " order by created_at desc"
 	}
+
+	db_query += " limit ${posts_per_page} offset ${posts_per_page * page}"
 
 	posts := app.raw_query(db_query) or {
 		app.logln("/ (posts): failed ${err}")
@@ -688,6 +692,14 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 		res.end()
 	}
 }
+
+// #000000000 -> DEPRECATE, the server cannot see this
+//
+// ?p=000000000 -> links to post, and contains meta information
+// ?page=10 -> supported in a search query
+
+// ?p=000000000## -> links to post and jumps to id="#"
+//                   much better solution
 
 fn main() {
 	mut app := &App{

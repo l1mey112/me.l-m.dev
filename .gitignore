@@ -1,4 +1,5 @@
 main
-lifestream2
+lifestream
 data.sqlite-shm
 data.sqlite-wal
+data.sqlite
