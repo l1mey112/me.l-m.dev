@@ -19,7 +19,7 @@ const secret_password = os.getenv("SECRET")
 const secret_cookie = sha256.hexhash("${time.now().unix}-${secret_password}")
 const base_url = 'https://me.l-m.dev/'
 const cache_max = 8
-const posts_per_page = 30
+const posts_per_page = 5
 
 [heap]
 struct App {
@@ -102,11 +102,18 @@ fn (mut app App) enter_cache(query Query, render string) {
 	}
 }
 
-struct Query {
+struct SearchQuery {
 mut:
 	search string
 	tags []string
+	page u64
 }
+
+struct PostQuery {
+	post i64
+}
+
+type Query = SearchQuery | PostQuery
 
 struct CacheEntry {
 	query Query
@@ -173,10 +180,10 @@ fn get_post(req string) ?(Post, bool) {
 	return post, is_update
 }
 
-fn get_query(req string) Query {
+fn get_query(req string) SearchQuery {
 	// assert req == '/' || req.match_blob('/?*')
 
-	mut query := Query{}
+	mut query := SearchQuery{}
 
 	if req.len == 1 {
 		return query
@@ -196,6 +203,9 @@ fn get_query(req string) Query {
 		} else if key == 'search' {
 			val := urllib.query_unescape(kv[1]) or { continue }
 			query.search = val
+		} else if key == 'page' {
+			page := strconv.parse_uint(kv[1], 10, 64) or { continue }
+			query.page = page
 		}
 	}
 
@@ -345,8 +355,18 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 		}
 	}
 
-	mut query := Query{}
-	if !edit_is {
+	mut query := unsafe { Query{} }
+
+	if phttp.cmpn(req, '/?p=', 4) {
+		unix := i64(strconv.parse_uint(req[4..], 10, 64) or {
+			res.write_string('HTTP/1.1 400 Bad Request\r\n')
+			res.header_date()
+			res.write_string('Content-Length: 0\r\n\r\n')
+			res.end()
+			return
+		})
+		query = PostQuery{unix}
+	} else if !edit_is {
 		query = get_query(req)
 	}
 
@@ -369,28 +389,47 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 		}
 	}
 
-	mut page := 0
+	mut page := u64(0)
 	mut db_query := "select * from posts"
 
 	if !edit_is {
-		if query.search != "" {
-			db_query += " where (content glob '*${sqlsearch(query.search)}*' collate nocase)"
-		}
-		if query.tags.len != 0 {
-			db_query += if query.search != "" {
-				" and ("
-			} else {
-				" where ("
+		match mut query {
+			SearchQuery {
+				if query.search != "" {
+					db_query += " where (content glob '*${sqlsearch(query.search)}*' collate nocase)"
+				}
+				if query.tags.len != 0 {
+					db_query += if query.search != "" {
+						" and ("
+					} else {
+						" where ("
+					}
+
+					for idx, t in query.tags {
+						tag := t.replace_each(['_', '\\_', '%', '\\%'])
+
+						db_query += "tags like '%${tag}%' escape '\\'"
+						if idx + 1 < query.tags.len {
+							db_query += " and "
+						} else {
+							db_query += ")"
+						}
+					}
+				}
 			}
-
-			for idx, t in query.tags {
-				tag := t.replace_each(['_', '\\_', '%', '\\%'])
-
-				db_query += "tags like '%${tag}%' escape '\\'"
-				if idx + 1 < query.tags.len {
-					db_query += " and "
-				} else {
-					db_query += ")"
+			PostQuery {
+				if query.post != 0 {
+					rows := app.raw_query("select count(*) from posts where (created_at >= ${query.post} or created_at == 0) order by (case when created_at = 0 then 1 else 2 end), created_at desc;") or {
+						app.logln("/: failed ${err}")
+						res.http_500()
+						res.end()
+						return
+					}
+					if rows.len == 1 && rows[0].vals.len == 1 {
+						posts_from_start := rows[0].vals[0].u64()
+						println("FROM_START: ${posts_from_start}")
+						page = (posts_from_start - 1) / posts_per_page
+					}
 				}
 			}
 		}
@@ -398,7 +437,9 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 		db_query += " where created_at = ${target_post.created_at.unix}"
 	}
 
-	if req == '/' {
+	println(page)
+
+	if req == '/' || req.starts_with('/?p=') {
 		// place unix 0 at the top, this post is pinned
 		db_query += " order by (case when created_at = 0 then 1 else 2 end), created_at desc"
 	} else {
