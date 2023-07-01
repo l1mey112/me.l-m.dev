@@ -488,7 +488,7 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 			PostQuery {
 				post_to_select = query.post
 				if query.post != 0 {
-					rows := app.raw_query("select count(*) from posts where (created_at >= ${query.post} or created_at == 0) order by (case when created_at = 0 then 1 else 2 end), created_at desc;") or {
+					rows := app.raw_query("select count(*) from posts where (created_at >= ${query.post} or created_at == 0) order by (case when created_at = 0 then 1 else 2 end), created_at desc") or {
 						app.logln("/: failed ${err}")
 						res.http_500()
 						res.end()
@@ -496,7 +496,9 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 					}
 					if rows.len == 1 && rows[0].vals.len == 1 {
 						posts_from_start := rows[0].vals[0].u64()
-						page = (posts_from_start - 1) / posts_per_page
+						if posts_from_start != 0 {
+							page = (posts_from_start - 1) / posts_per_page
+						}
 					}
 				}
 			}
@@ -505,14 +507,7 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 		db_query += " where created_at = ${target_post.created_at.unix}"
 	}
 
-	if req == '/' || req.starts_with('/?p=') {
-		// place unix 0 at the top, this post is pinned
-		db_query += " order by (case when created_at = 0 then 1 else 2 end), created_at desc"
-	} else {
-		db_query += " order by created_at desc"
-	}
-
-	db_query += " limit ${posts_per_page} offset ${posts_per_page * page}"
+	db_query += " order by (case when created_at = 0 then 1 else 2 end), created_at desc limit ${posts_per_page} offset ${posts_per_page * page}"
 
 	posts := app.raw_query(db_query) or {
 		app.logln("/ (posts): failed ${err}")
