@@ -389,8 +389,9 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 		}
 	}
 
-	mut page := u64(0)
 	mut db_query := "select * from posts"
+
+	mut page := u64(0)
 
 	if !edit_is {
 		match mut query {
@@ -416,6 +417,7 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 						}
 					}
 				}
+				page = query.page
 			}
 			PostQuery {
 				if query.post != 0 {
@@ -427,7 +429,6 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 					}
 					if rows.len == 1 && rows[0].vals.len == 1 {
 						posts_from_start := rows[0].vals[0].u64()
-						println("FROM_START: ${posts_from_start}")
 						page = (posts_from_start - 1) / posts_per_page
 					}
 				}
@@ -436,8 +437,6 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 	} else {
 		db_query += " where created_at = ${target_post.created_at.unix}"
 	}
-
-	println(page)
 
 	if req == '/' || req.starts_with('/?p=') {
 		// place unix 0 at the top, this post is pinned
