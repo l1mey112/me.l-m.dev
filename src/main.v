@@ -314,39 +314,6 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 		content: 'It was a dark and stormy night...'
 	}
 
-	if phttp.cmpn(req, '/?meta=', 7) {
-		unix := time.unix(i64(strconv.parse_uint(req[7..], 10, 64) or {
-			res.write_string('HTTP/1.1 400 Bad Request\r\n')
-			res.header_date()
-			res.write_string('Content-Length: 0\r\n\r\n')
-			res.end()
-			return
-		}))
-
-		rows := sql app.db {
-		    select from Post where created_at == unix limit 1
-		} or {
-			res.http_404()
-			res.end()
-			return
-		}
-
-		if rows.len == 0 {
-			res.http_404()
-			res.end()
-			return
-		}
-
-		post := rows[0]
-		tags := fmt_tag(post.tags.split(' '))
-
-		res.http_ok()
-		res.header_date()
-		res.html()
-		write_all(mut res, $tmpl('tmpl/meta_tmpl.html'))
-		return
-	}
-
 	// ignore and pass if not authed
 	if phttp.cmpn(req, '/?edit=', 7) {
 		if !is_authed {
@@ -561,6 +528,13 @@ fn forbidden_go_auth(mut res phttp.Response) {
 	write_all(mut res, $tmpl('tmpl/redirect_tmpl.html'))
 }
 
+fn moved_permanently(location string, mut res phttp.Response) {
+	res.write_string('HTTP/1.1 301 Moved Permanently\r\n')
+	res.write_string('Location: ${location}\r\n')
+	res.write_string('Content-Length: 0\r\n\r\n')
+	res.end()
+}
+
 fn see_other(location string, mut res phttp.Response) {
 	res.write_string('HTTP/1.1 303 See Other\r\n')
 	res.write_string('Location: ${location}\r\n')
@@ -613,7 +587,17 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 	}
 
 	if phttp.cmpn(req.method, 'GET ', 4) {
-		if phttp.cmp(req.path, '/') || phttp.cmpn(req.path, '/?', 2) {
+		if phttp.cmpn(req.path, '/?meta=', 7) {
+			v := i64(strconv.parse_uint(req.path[7..], 10, 64) or {
+				res.write_string('HTTP/1.1 400 Bad Request\r\n')
+				res.header_date()
+				res.write_string('Content-Length: 0\r\n\r\n')
+				res.end()
+				return
+			})
+			moved_permanently("/?p=${v}##", mut res)
+			return
+		} else if phttp.cmp(req.path, '/') || phttp.cmpn(req.path, '/?', 2) {
 			app.serve_home(req.path, is_authed, mut res)
 			return
 		} else if phttp.cmp(req.path, '/index.xml') {
