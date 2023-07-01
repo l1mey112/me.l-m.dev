@@ -56,6 +56,7 @@
 	img, video {
 		max-width: 100%;
 		max-height: 500px;
+		height: auto;
 	}
 	br {
 		display: block;
@@ -146,11 +147,13 @@
 		color: #1ed760;
 	}
 	.scc {
-		padding: 1em;
 		flex: 1;
 		display: flex;
 		justify-content: center;
 		align-items: center;
+	}
+	.scw {
+		padding: 1em;
 	}
 	.sic {
 		width: 25%;
@@ -159,6 +162,7 @@
 	}
 	.sic image {
 		object-fit: cover;
+		max-width: 100%;
 	}
 	.nvis {
 		text-decoration: none;
@@ -179,6 +183,10 @@
 	nav {
 		display: flex;
 		justify-content: space-between;
+	}
+	audio {
+		width: 100%;
+		max-height: 3em;
 	}
 </style>
 
