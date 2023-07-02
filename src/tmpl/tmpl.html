@@ -285,7 +285,7 @@ Created with &lt;3 with <a href="https://vlang.io/">V</a>. [<a href="/#latest">L
 		<p class=s>#@{post.created_at.unix}</p>
 		@{construct_tags(post)}
 		<div class=r>
-		<a href="/?meta=@{post.created_at.unix}">[share]</a>
+		<a href="/?p=@{post.created_at.unix}##">[share]</a>
 @if is_authed
 			<a href="/?edit=@{post.created_at.unix}">[e]</a>
 			<a href="/backup">[b]</a>
