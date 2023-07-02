@@ -180,7 +180,7 @@ fn get_post(req string) ?(Post, bool) {
 	return post, is_update
 }
 
-fn get_query(req string) SearchQuery {
+fn get_search_query(req string) SearchQuery {
 	// assert req == '/' || req.match_blob('/?*')
 
 	mut query := SearchQuery{}
@@ -435,7 +435,7 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 		})
 		query = PostQuery{unix}
 	} else if !edit_is {
-		query = get_query(req)
+		query = get_search_query(req)
 	}
 
 	// always render new if authed, never cache authed pages
@@ -565,7 +565,7 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 	no_next := posts.len < posts_per_page
 	nav := $tmpl('tmpl/nav_tmpl.html')
 
-	mut tmpl := $tmpl('tmpl/tmpl.html')
+	tmpl := $tmpl('tmpl/tmpl.html')
 
 	res.http_ok()
 	res.header_date()
@@ -573,23 +573,10 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 	if !is_authed {
 		app.enter_cache(query, tmpl)
 
-		if render := app.get_cache(query) {
-			res.write_string('ETag: "${etag}"\r\n')
-			res.write_string('Cache-Control: max-age=86400, must-revalidate\r\n')
-			/* if is_gzip {
-				res.write_string('Content-Encoding: gzip\r\n')
-			} */
-			write_all(mut res, render)
-		}
+		res.write_string('ETag: "${etag}"\r\n')
+		res.write_string('Cache-Control: max-age=86400, must-revalidate\r\n')
+		write_all(mut res, tmpl)
 	} else {
-		// compress on the go, this cannot be cached
-
-		/* if use_gzip && tmpl.len > cache_min_gzip {
-			if val := gzip.compress(tmpl.bytes()) {
-				tmpl = val.bytestr()
-				res.write_string('Content-Encoding: gzip\r\n')
-			}
-		} */
 		res.write_string('Cache-Control: no-cache\r\n')
 		write_all(mut res, tmpl)
 	}
