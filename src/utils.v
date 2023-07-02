@@ -74,7 +74,7 @@ fn (mut app App) preprocess(text string) string {
 		t := text[b1..b2]
 
 		if t.ends_with('mp4') || t.ends_with('webm') || t.ends_with('mov') {
-			return '\n<video muted autoplay loop controls preload=none src="${t}"></video>\n'
+			return '\n<video muted autoplay loop controls preload=metadata src="${t}"></video>\n'
 		}
 		return '\n<img loading=lazy alt="" src="${t}">\n'
 	})
