@@ -15,8 +15,11 @@ How did I do it?
 A large amount of templating, messing around with `sqlite3`, a single threaded `picoev` event loop, HTTP spec caching/etags, lots of regex, and a lot of thinking.
 
 1. [Three Undocumented Projects And The Three Month Hiatus](https://l-m.dev/cs/three_undocumented_projects/)
+
 	Introduction to me.l-m.dev.
+	
 1. [Shipping 700KiBs of compressed HTML isn't viable?](https://l-m.dev/cs/pagination_for_linear_blog/)
+
 	Implementing pagination and a navbar for me.l-m.dev.
 
 # posts
