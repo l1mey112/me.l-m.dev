@@ -1,0 +1,8 @@
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/"
+                      xmlns:moz="http://www.mozilla.org/2006/browser/search/">
+  <ShortName>me.l-m.dev</ShortName>
+  <Description>Search me.l-m.dev</Description>
+  <InputEncoding>UTF-8</InputEncoding>
+  <Url type="text/html" method="get" template="https://github.com/?search={searchTerms}&amp;ref=opensearch"/>
+  <moz:SearchForm>https://me.l-m.dev/search</moz:SearchForm>
+</OpenSearchDescription>

@@ -24,6 +24,7 @@ fn mcmp(a &char, len int, b string) bool {
 }
 
 const terminus = $embed_file('tmpl/TerminusTTF.woff2').to_string()
+const opensearch = $embed_file('tmpl/opensearch.xml').to_string()
 
 const query_all_tags = "WITH split(tag, tags_remaining) AS (
   -- Initial query

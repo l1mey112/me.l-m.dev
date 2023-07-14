@@ -840,6 +840,13 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 		} else if req.path == '/index.xml' {
 			app.serve_rss(mut res)
 			return
+		} else if req.path == '/opensearch.xml' {
+			res.http_ok()
+			res.header_date()
+			res.write_string('Content-Type: text/xml\r\n')
+			res.write_string('Cache-Control: max-age=31536000, immutable\r\n') // never changes, 1 year
+			write_all(mut res, opensearch)
+			return
 		} else if req.path == '/TerminusTTF.woff2' {
 			res.http_ok()
 			res.header_date()
