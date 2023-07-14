@@ -80,7 +80,10 @@ You can get a copy of the v compiler [here](https://vlang.io/).
 # running the webserver
 
 The server expects a few things in order to run:
-- There must be a `backup/` folder in the working directory of the executable.
+- Call `./make_init_files.sh` to create the following files:
+	- `data.sqlite` with correct schema
+	- `wal.log` for logging
+	- `backup/` folder for backups
 - The `SECRET` envvar should be set, and is used in `https://<url>/auth`.
 - The `base_url` const in `main.v` should be changed to point to your website's URL.
 - Optionally, the `PORT` envvar can be set, but defaults to port 8080.
