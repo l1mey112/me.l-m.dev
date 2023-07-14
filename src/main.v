@@ -247,6 +247,9 @@ fn get_search_query(req string) SearchQuery {
 }
 
 fn (app &App) raw_query(query string) ![]sqlite.Row {
+	$if trace_orm ? {
+		eprintln('raw_query: ' + query)
+	}
 	rows, ret := app.db.exec(query)
 
 	if sqlite.is_error(ret) {
@@ -346,10 +349,6 @@ fn construct_tags_query(tags []string) string {
 	return sb.str()
 }
 
-/* fn construct_next(query Query, post_page u64, no_next bool) {
-	
-} */
-
 fn construct_next(query Query, post_page u64, no_next bool) ?string {
 	if no_next {
 		return none
@@ -371,6 +370,31 @@ fn construct_next(query Query, post_page u64, no_next bool) ?string {
 		}
 		PostQuery{
 			return '?page=${post_page + 1}'
+		}
+	}
+}
+
+fn construct_last_page(query Query, post_page u64, pages u64, no_next bool) ?string {
+	if no_next || pages == 0 || pages - 1 == post_page {
+		return none
+	}
+
+	match query {
+		SearchQuery{
+			mut q := '?page=${pages - 1}'
+
+			if query.search != '' {
+				q += '&search=${urllib.query_escape(query.search)}'
+			}
+
+			if query.tags.len != 0 {
+				q += '&${construct_tags_query(query.tags)}'
+			}
+
+			return q
+		}
+		PostQuery{
+			return '?page=${pages - 1}'
 		}
 	}
 }
@@ -408,6 +432,39 @@ fn construct_previous(query Query, post_page u64) ?string {
 		}
 		PostQuery{
 			return '?page=${post_page - 1}'
+		}
+	}
+}
+
+fn construct_first_page(query Query, post_page u64) ?string {
+	if post_page == 0 {
+		return none
+	}
+
+	match query {
+		SearchQuery{
+			if query.page == 0 {
+				return none
+			}
+
+			if query.search == '' && query.tags.len == 0 {
+				return ''
+			}
+
+			mut q := '?page=0'
+
+			if query.search != '' {
+				q += '&search=${urllib.query_escape(query.search)}'
+			}
+
+			if query.tags.len != 0 {
+				q += '&${construct_tags_query(query.tags)}'
+			}
+
+			return q
+		}
+		PostQuery{
+			return ''
 		}
 	}
 }
@@ -492,7 +549,7 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 		}
 	}
 
-	mut db_query := "select * from posts"
+	mut db_query := ""
 
 	mut page := u64(0)
 	mut post_to_select := ?i64(none)
@@ -545,9 +602,20 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 		db_query += " where created_at = ${target_post.created_at.unix}"
 	}
 
-	db_query += " order by (case when created_at = 0 then 1 else 2 end), created_at desc limit ${posts_per_page} offset ${posts_per_page * page}"
+	db_query += " order by (case when created_at = 0 then 1 else 2 end), created_at desc"
 
-	posts := app.raw_query(db_query) or {
+	total_count_from_search := app.raw_query("select count(*) from posts${db_query}") or {
+		app.logln("/ (count): failed ${err}")
+		res.http_500()
+		res.end()
+		return
+	}[0].vals[0].u64()
+
+	total_pages_from_search := (total_count_from_search + posts_per_page - 1) / posts_per_page
+
+	db_query += " limit ${posts_per_page} offset ${posts_per_page * page}"
+
+	posts := app.raw_query("select * from posts${db_query}") or {
 		app.logln("/ (posts): failed ${err}")
 		res.http_500()
 		res.end()
@@ -589,9 +657,7 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 		}
 	}
 
-	// do not cache authed pages
-
-	no_next := posts.len < posts_per_page
+	no_next := page + 1 >= total_pages_from_search
 	nav := $tmpl('tmpl/nav_tmpl.html')
 
 	tmpl := $tmpl('tmpl/tmpl.html')
@@ -599,14 +665,15 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 	res.http_ok()
 	res.header_date()
 	res.html()
+	// do not cache authed pages
 	if !is_authed {
 		app.enter_cache(query, tmpl)
 
 		res.write_string('ETag: "${etag}"\r\n')
-		res.write_string('Cache-Control: max-age=86400, must-revalidate\r\n')
+		res.write_string('Cache-Control: max-age=0, must-revalidate\r\n')
 		write_all(mut res, tmpl)
 	} else {
-		res.write_string('Cache-Control: no-cache\r\n')
+		res.write_string('Cache-Control: no-cache, no-store\r\n')
 		write_all(mut res, tmpl)
 	}
 }
@@ -842,13 +909,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 	}
 }
 
-// #000000000 -> DEPRECATE, the server cannot see this
-//
-// ?p=000000000 -> links to post, and contains meta information
-// ?page=10 -> supported in a search query
-
-// ?p=000000000## -> links to post and jumps to id="#"
-//                   much better solution
+// -d trace_orm
 
 fn main() {
 	mut app := &App{
