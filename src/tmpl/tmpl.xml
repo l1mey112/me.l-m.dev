@@ -7,7 +7,7 @@
 	<language>en-us</language>
 	<copyright>Copyright 2023, l-m.dev</copyright>
 	<generator>The V Programming Language</generator>
-	<lastBuildDate>@{app.last_edit_time.utc_string()}</lastBuildDate>
+	<lastBuildDate>@{app.stats.last_edit_time.utc_string()}</lastBuildDate>
 	<atom:link href="@{base_url}index.xml" rel="self" type="application/rss+xml" />
 @for post in posts
 	<item>

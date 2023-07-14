@@ -34,7 +34,7 @@ fn (mut app App) worker() {
 		}
 
 		// kill caches
-		app.invalidate_cache()
+		app.invalidate_cache(.invalidate_meta)
 	}
 }
 

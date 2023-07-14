@@ -12,7 +12,7 @@
 	<meta content="@{construct_tags(posts[selected_post_idx])}" property="og:description">
 @else
 	<meta content="me.l-m.dev" property="og:title">
-	<meta content="@{posts_total} total posts, @{all_tags.len} unique tags" property="og:description">
+	<meta content="@{app.stats.posts} total posts, @{all_tags.len} unique tags" property="og:description">
 @end
 </head>
 <body>
@@ -206,7 +206,7 @@
 <div class="cc">
 <p>
 <a href="https://l-m.dev">https://l-m.dev</a> - © l-m.dev 2023<br>
-Welcome! - @{posts_total} total posts. [<a href="/index.xml">RSS</a>]<br>
+Welcome! - @{app.stats.posts} total posts. [<a href="/index.xml">RSS</a>]<br>
 Created with &lt;3 with <a href="https://vlang.io/">V</a>. [<a href="/#latest">LATEST</a>]
 </p>
 </div>
@@ -216,7 +216,7 @@ Created with &lt;3 with <a href="https://vlang.io/">V</a>. [<a href="/#latest">L
 <hr color=gray>
 
 <details>
-<summary>Search <span class=cl>@{posts_total}</span> posts with <span class=cl>@{all_tags.len}</span> unique tags</summary>
+<summary>Search <span class=cl>@{app.stats.posts}</span> posts with <span class=cl>@{all_tags.len}</span> unique tags</summary>
 
 <form action=/ method=GET>
 @for idx, tag in all_tags

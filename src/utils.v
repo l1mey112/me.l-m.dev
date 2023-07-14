@@ -52,7 +52,7 @@ struct Tag {
 fn write_all(mut res phttp.Response, v string) {
 	res.write_string('Content-Length: ')
 	unsafe {
-		res.buf += C.u64toa(&char(res.buf), v.len)
+		res.buf += phttp.u64toa(res.buf, u64(v.len)) or { panic('unreachable') }
 	}
 	res.write_string('\r\n\r\n')
 

@@ -21,6 +21,12 @@ const base_url = 'https://me.l-m.dev/'
 const cache_max = 32 // larger!
 const posts_per_page = 25
 
+enum CacheStatus as i64 { // i know that `as i64` isn't implemented yet
+	clean = 0
+	invalidate_posts // essentially invalidate all
+	invalidate_meta // spotify and yt thumbs
+}
+
 [heap]
 struct App {
 mut:
@@ -28,10 +34,14 @@ mut:
 	spotify_regex regex.RE
 	youtube_regex regex.RE
 	db sqlite.DB
-	last_edit_time time.Time // caches are invalidated at that time
+	stats struct {
+	mut:
+		posts u64
+		last_edit_time time.Time // caches are invalidated at that time
+	}
 	cache []CacheEntry = []CacheEntry{cap: cache_max}
 	cache_rss ?string
-	cache_flag i64 // atomic
+	cache_flag i64 // CacheStatus enum
 	wal os.File // append only
 	ch chan Status // worker
 }
@@ -41,21 +51,45 @@ fn (mut app App) logln(v string) {
 	app.wal.flush()
 }
 
-fn (mut app App) invalidate_cache() {
-	if stdatomic.load_i64(&app.cache_flag) == 0 {
-		stdatomic.store_i64(&app.cache_flag, 1)
+// TODO: some kind of spinlock?
+
+fn (mut app App) invalidate_cache(status CacheStatus) {
+	// i don't want to overwrite a .invalidate_posts with a .invalidate_meta
+	current_status := unsafe { CacheStatus(stdatomic.load_i64(&app.cache_flag)) }
+
+	if current_status == .invalidate_posts {
+		return
 	}
+	
+	stdatomic.store_i64(&app.cache_flag, i64(status))
 }
 
-fn (mut app App) invalidate_cache_do() {
-	if stdatomic.load_i64(&app.cache_flag) == 1 {
-		// unsafe { app.cache.len = 0 }
-		app.last_edit_time = time.now()
-		app.cache = []CacheEntry{cap: cache_max} // force GC to collect old ptrs
-		app.cache_rss = none
+fn (mut app App) invalidate_cache_do()! {
+	// TODO: do a CAS here
 
-		stdatomic.store_i64(&app.cache_flag, 0)
+	status := unsafe { CacheStatus(stdatomic.load_i64(&app.cache_flag)) }
+
+	if status == .clean {
+		return
 	}
+
+	eprintln(status)
+
+	// .invalidate_posts | .invalidate_meta
+
+	if status == .invalidate_posts {
+		app.stats.last_edit_time = time.now()
+		app.stats.posts = u64(sql app.db {
+			select count from Post
+		} or {
+			return error('failed to count posts')
+		})
+	}
+
+	app.cache = []CacheEntry{cap: cache_max} // force GC to collect old ptrs
+	app.cache_rss = none
+
+	stdatomic.store_i64(&app.cache_flag, i64(CacheStatus.clean))
 }
 
 // return render, use_gzip
@@ -270,7 +304,7 @@ fn (mut app App) serve_rss(mut res phttp.Response) {
 }
 
 fn (app &App) etag(req string) u64 {
-	return hash.wyhash_c(req.str, u64(req.len), u64(app.last_edit_time.unix))
+	return hash.wyhash_c(req.str, u64(req.len), u64(app.stats.last_edit_time.unix))
 }
 
 fn construct_article_header(created_at i64, latest i64, selected ?i64) string {	
@@ -311,6 +345,10 @@ fn construct_tags_query(tags []string) string {
 
 	return sb.str()
 }
+
+/* fn construct_next(query Query, post_page u64, no_next bool) {
+	
+} */
 
 fn construct_next(query Query, post_page u64, no_next bool) ?string {
 	if no_next {
@@ -394,7 +432,7 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 	}
 
 	// ignore and pass if not authed
-	if phttp.cmpn(req, '/?edit=', 7) {
+	if req.starts_with('/?edit=') {
 		if !is_authed {
 			forbidden_go_auth(mut res)
 			return
@@ -425,7 +463,7 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 
 	mut query := unsafe { Query{} }
 
-	if phttp.cmpn(req, '/?p=', 4) {
+	if req.starts_with('/?p=') {
 		unix := i64(strconv.parse_uint(req[4..], 10, 64) or {
 			res.write_string('HTTP/1.1 400 Bad Request\r\n')
 			res.header_date()
@@ -531,15 +569,6 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 	mut all_tags := tag_rows.map(Tag{it.vals[0], it.vals[1].int()})
 	all_tags.sort(a.count > b.count)
 
-	posts_total := sql app.db {
-		select count from Post
-	} or {
-		app.logln("/: failed ${err}")
-		res.http_500()
-		res.end()
-		return
-	}
-
 	mut latest_post_unix := i64(0)
 	latest_post_unix_rows := app.raw_query("select created_at from posts order by created_at desc limit 1") or {
 		app.logln("/: failed ${err}")
@@ -608,16 +637,18 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 	mut is_authed := false
 	mut etag := ?u64(none)
 
-	// atomic prepare request
-	app.invalidate_cache_do()
+	// atomic prepare request, used for etag cache
+	app.invalidate_cache_do() or {
+		app.logln("/ (invalidate_cache_do): failed ${err}")
+		res.http_500()
+		res.end()
+	}
 
 	// check for gzip and auth
 	for idx in 0..req.num_headers {
 		hdr := req.headers[idx]
-		if mcmp(hdr.name, hdr.name_len, 'Cookie') {
-			str := unsafe { (&u8(hdr.value)).vstring_with_len(hdr.value_len) }
-
-			for v in str.split('; ') {
+		if hdr.name == 'Cookie' {
+			for v in hdr.value.split('; ') {
 				if v.starts_with('auth=') {
 					if v.after('auth=') == secret_cookie {
 						is_authed = true
@@ -625,8 +656,8 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 					break
 				}
 			}
-		} else if mcmp(hdr.name, hdr.name_len, 'If-None-Match') {
-			str := unsafe { (&u8(hdr.value)).vstring_with_len(hdr.value_len) }
+		} else if hdr.name == 'If-None-Match' {
+			str := hdr.value
 
 			if str.len >= 3 {
 				// "x"
@@ -647,8 +678,8 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 		}
 	}
 
-	if phttp.cmpn(req.method, 'GET ', 4) {
-		if phttp.cmpn(req.path, '/?meta=', 7) {
+	if req.method == 'GET' {
+		if req.path.starts_with('/?meta=') {
 			v := i64(strconv.parse_uint(req.path[7..], 10, 64) or {
 				res.write_string('HTTP/1.1 400 Bad Request\r\n')
 				res.header_date()
@@ -658,26 +689,26 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 			})
 			moved_permanently("/?p=${v}##", mut res)
 			return
-		} else if phttp.cmp(req.path, '/') || phttp.cmpn(req.path, '/?', 2) {
+		} else if req.path == '/' || req.path.starts_with( '/?') {
 			app.serve_home(req.path, is_authed, mut res)
 			return
-		} else if phttp.cmp(req.path, '/index.xml') {
+		} else if req.path == '/index.xml' {
 			app.serve_rss(mut res)
 			return
-		} else if phttp.cmp(req.path, '/TerminusTTF.woff2') {
+		} else if req.path == '/TerminusTTF.woff2' {
 			res.http_ok()
 			res.header_date()
 			res.write_string('Content-Type: font/woff2\r\n')
 			res.write_string('Cache-Control: max-age=31536000, immutable\r\n') // never changes, 1 year
 			write_all(mut res, terminus)
 			return
-		} else if phttp.cmp(req.path, '/auth') {
+		} else if req.path == '/auth' {
 			res.http_ok()
 			res.header_date()
 			res.html()
 			write_all(mut res, $tmpl('tmpl/auth_tmpl.html'))
 			return
-		} else if phttp.cmp(req.path, '/backup') {
+		} else if req.path == '/backup' {
 			if !is_authed {
 				forbidden_go_auth(mut res)
 				return
@@ -695,7 +726,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 			app.logln("/backup: created '${file}'")
 			see_other('/', mut res)
 			return
-		} else if phttp.cmpn(req.path, '/delete/', 8) {
+		} else if req.path.starts_with('/delete/') {
 			if !is_authed {
 				forbidden_go_auth(mut res)
 				return
@@ -734,8 +765,8 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 		}
 		res.http_404()
 		res.end()
-	} else if phttp.cmpn(req.method, 'POST ', 5) {
-		if phttp.cmp(req.path, '/auth') {
+	} else if req.method == 'POST' {
+		if req.path == '/auth' {
 			// auth=....
 			// Set-Cookie: cookieName=cookieValue; Secure; SameSite=Strict
 			pwd := req.body.all_after('auth=')
@@ -754,7 +785,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 			res.html()
 			write_all(mut res, $tmpl('tmpl/auth_failed_tmpl.html'))
 			return
-		} else if phttp.cmp(req.path, '/post') {
+		} else if req.path == '/post' {
 			if !is_authed {
 				forbidden_go_auth(mut res)
 				return
@@ -799,7 +830,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 				app.logln("/post: update /#${post.created_at.unix}")
 			}
 
-			app.invalidate_cache()
+			app.invalidate_cache(.invalidate_posts)
 			see_other('/?p=${post.created_at.unix}##', mut res)
 			return
 		}
@@ -826,7 +857,6 @@ fn main() {
 		youtube_regex: regex.regex_opt(r"https?://(?:www\.)?youtu(?:be\.com/watch\?v=)|(?:\.be/)(\S+)")!
 		db: sqlite.connect("data.sqlite")!
 		wal: os.open_append("wal.log")!
-		last_edit_time: time.now()
 		ch: chan Status{cap: 8}
 	}
 
@@ -836,6 +866,9 @@ fn main() {
 		println('\ngoodbye')
 	})
 
+	app.invalidate_cache(.invalidate_posts)
+	app.invalidate_cache_do()!
+
 	assert secret_password != ''
 	assert os.is_dir('backup')
 
@@ -844,5 +877,6 @@ fn main() {
 
 	println("http://localhost:${port}/")
 	spawn app.worker()
-	picoev.new(port: port, cb: &callback, user_data: app, max_read: 8192, max_write: 8192).serve() // RIGHT UNDER THE MAXIMUM i32 SIGNED VALUE
+	mut pico := picoev.new(port: port, cb: &callback, user_data: app, max_read: 8192, max_write: 8192) // RIGHT UNDER THE MAXIMUM i32 SIGNED VALUE
+	pico.serve()
 }
