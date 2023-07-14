@@ -10,7 +10,7 @@
 	<link rel="search" type="application/opensearchdescription+xml" href="/opensearch.xml" title="me.l-m.dev">
 @if selected_post_idx != -1
 	<meta name="twitter:card" content="summary_large_image">
-	<meta name="twitter:title" content="@{meta_description}">
+	<meta name="twitter:title" content="me.l-m.dev | #@{posts[selected_post_idx].created_at.unix">
 @if url := meta_image_url
 	<meta name="twitter:image" property="og:image" content="@{url}">
 @end
