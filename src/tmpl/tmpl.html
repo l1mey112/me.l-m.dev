@@ -8,8 +8,13 @@
 	<meta name="theme-color" content="#F7208B">
 	<link rel="alternate" type="application/atom+xml" title="RSS" href="/index.xml" />
 @if selected_post_idx != -1
+	<meta name="twitter:card" content="summary_large_image">
+	<meta name="twitter:title" content="@{meta_description}">
+@if url := meta_image_url
+	<meta name="twitter:image" property="og:image" content="@{url}">
+@end
 	<meta content="me.l-m.dev | #@{posts[selected_post_idx].created_at.unix}" property="og:title">
-	<meta content="@{construct_tags(posts[selected_post_idx])}" property="og:description">
+	<meta content="@{meta_description}" property="og:description">
 @else
 	<meta content="me.l-m.dev" property="og:title">
 	<meta content="@{app.stats.posts} total posts, @{all_tags.len} unique tags" property="og:description">
@@ -286,6 +291,9 @@ Created with &lt;3 with <a href="https://vlang.io/">V</a>. [<a href="/#latest">L
 		@{construct_tags(post)}
 		<div class=r>
 		<a href="/?p=@{post.created_at.unix}##">[share]</a>
+@for idx in 0..app.get_meta_img_count(post)
+		<a href="/?p=@{post.created_at.unix}&img=@{idx}##">[i@{idx}]</a>
+@end
 @if is_authed
 			<a href="/?edit=@{post.created_at.unix}">[e]</a>
 			<a href="/backup">[b]</a>

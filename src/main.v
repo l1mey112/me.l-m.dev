@@ -73,8 +73,6 @@ fn (mut app App) invalidate_cache_do()! {
 		return
 	}
 
-	eprintln(status)
-
 	// .invalidate_posts | .invalidate_meta
 
 	if status == .invalidate_posts {
@@ -144,7 +142,9 @@ mut:
 }
 
 struct PostQuery {
+mut:
 	post i64
+	img i64 = -1 // -1 is none
 }
 
 type Query = SearchQuery | PostQuery
@@ -469,6 +469,46 @@ fn construct_first_page(query Query, post_page u64) ?string {
 	}
 }
 
+fn (mut app App) get_meta_img_count(post Post) i64 {
+	// 'https?://\S+\.(?:(png)|(jpe?g)|(gif)|(svg)|(webp)|(mp4)|(webm)|(mov))'
+
+	media := app.media_regex.find_all_str(post.content)
+
+	mut nidx := i64(0)
+	for m in media {
+		if m.ends_with('mp4') || m.ends_with('webm') || m.ends_with('mov') {
+			continue
+		} 
+
+		nidx++
+	}
+
+	return nidx
+}
+
+fn (mut app App) find_meta_img(post Post, img i64) ?string {
+	// 'https?://\S+\.(?:(png)|(jpe?g)|(gif)|(svg)|(webp)|(mp4)|(webm)|(mov))'
+
+	media := app.media_regex.find_all_str(post.content)
+
+	// i would love to do a .filter() but V incurs a cost that way
+
+	mut nidx := i64(0)
+	for m in media {
+		if m.ends_with('mp4') || m.ends_with('webm') || m.ends_with('mov') {
+			continue
+		} 
+
+		if nidx == img {
+			return m
+		}
+		
+		nidx++
+	}
+
+	return none
+}
+
 fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) {
 	// edit post by unix (AUTH ONLY)
 	//   /?edit=123456789
@@ -521,14 +561,42 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 	mut query := unsafe { Query{} }
 
 	if req.starts_with('/?p=') {
-		unix := i64(strconv.parse_uint(req[4..], 10, 64) or {
-			res.write_string('HTTP/1.1 400 Bad Request\r\n')
-			res.header_date()
-			res.write_string('Content-Length: 0\r\n\r\n')
-			res.end()
-			return
-		})
-		query = PostQuery{unix}
+		mut post := PostQuery{post: -1}
+		
+		words := req[2..].split('&')
+
+		for word in words {
+			kv := word.split_nth('=', 2)
+			if kv.len != 2 {
+				continue
+			}
+
+			// oh how i love `goto`
+			key := kv[0]
+			val := kv[1]
+			if key == 'p' {
+				post.post = i64(strconv.parse_uint(val, 10, 64) or {
+					res.write_string('HTTP/1.1 400 Bad Request\r\n')
+					res.header_date()
+					res.write_string('Content-Length: 0\r\n\r\n')
+					res.end()
+					return
+				})
+			} else if key == 'img' {
+				post.img = i64(strconv.parse_uint(val, 10, 64) or {
+					res.write_string('HTTP/1.1 400 Bad Request\r\n')
+					res.header_date()
+					res.write_string('Content-Length: 0\r\n\r\n')
+					res.end()
+					return
+				})
+			}
+		}
+
+		// req.starts_with('/?p=')
+		// -> assume that `post.unix` is set
+
+		query = post
 	} else if !edit_is {
 		query = get_search_query(req)
 	}
@@ -648,11 +716,21 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 		latest_post_unix = latest_post_unix_rows[0].vals[0].i64()
 	}
 
+
 	mut selected_post_idx := -1
+	mut meta_description := ''
+	mut meta_image_url := ?string(none)
 	if sel := post_to_select {
 		for idx, p in posts {
 			if p.created_at.unix == sel {
 				selected_post_idx = idx 
+				meta_description = construct_tags(posts[selected_post_idx])
+
+				img := (query as PostQuery).img
+
+				if img != -1 {
+					meta_image_url = app.find_meta_img(posts[selected_post_idx], img)
+				}
 			}
 		}
 	}
