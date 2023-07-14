@@ -737,7 +737,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 		if e == app.etag(req.path) && !is_authed {
 			res.write_string('HTTP/1.1 304 Not Modified\r\n')
 			res.write_string('ETag: "${e}"\r\n')
-			res.write_string('Cache-Control: max-age=86400, must-revalidate\r\n')
+			res.write_string('Cache-Control: max-age=0, must-revalidate\r\n')
 			res.header_date()
 			res.write_string('Content-Length: 0\r\n\r\n')
 			res.end()
