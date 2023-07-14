@@ -2,4 +2,6 @@ main
 lifestream
 data.sqlite-shm
 data.sqlite-wal
+data.sqlite
+backup
 wal.log
