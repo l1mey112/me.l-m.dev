@@ -45,6 +45,24 @@ FROM split
 WHERE tag != ''
 GROUP BY tag;"
 
+const query_count_tags = "WITH split(tag, tags_remaining) AS (
+  -- Initial query
+  SELECT 
+    '',
+    tags || ' ' -- Appending tags column data to handle the first tag
+  FROM posts
+  -- Recursive query
+  UNION ALL
+  SELECT
+    trim(substr(tags_remaining, 0, instr(tags_remaining, ' '))),
+    substr(tags_remaining, instr(tags_remaining, ' ') + 1)
+  FROM split
+  WHERE tags_remaining != ''
+)
+SELECT COUNT(DISTINCT tag) AS unique_tag_count
+FROM split
+WHERE tag != '';"
+
 struct Tag {
 	tag string
 	count int

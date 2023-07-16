@@ -37,13 +37,19 @@ mut:
 	stats struct {
 	mut:
 		posts u64
+		tags u64
 		last_edit_time time.Time // caches are invalidated at that time
 	}
 	cache []CacheEntry = []CacheEntry{cap: cache_max}
 	cache_rss ?string
+	cache_embed ?string
 	cache_flag i64 // CacheStatus enum
 	wal os.File // append only
 	ch chan Status // worker
+}
+
+fn to_unix_str(v string) string {
+	return time.unix(v.i64()).utc_string()
 }
 
 fn (mut app App) logln(v string) {
@@ -80,12 +86,16 @@ fn (mut app App) invalidate_cache_do()! {
 		app.stats.posts = u64(sql app.db {
 			select count from Post
 		} or {
-			return error('failed to count posts')
+			return error('failed to count posts, ${err}')
 		})
+		app.stats.tags = app.raw_query(query_count_tags) or {
+			return error("failed to count tags, ${err}")		
+		}[0].vals[0].u64()
 	}
 
 	app.cache = []CacheEntry{cap: cache_max} // force GC to collect old ptrs
 	app.cache_rss = none
+	app.cache_embed = none
 
 	stdatomic.store_i64(&app.cache_flag, i64(CacheStatus.clean))
 }
@@ -288,7 +298,7 @@ fn xmlescape(a string) string {
 fn (mut app App) serve_rss(mut res phttp.Response) {
 	if app.cache_rss == none {
 		posts := sql app.db {
-			select from Post
+			select from Post order by created_at desc
 		} or {
 			panic('unreachable')
 		}
@@ -302,7 +312,30 @@ fn (mut app App) serve_rss(mut res phttp.Response) {
 
 	if cache_rss := app.cache_rss {
 		write_all(mut res, cache_rss)
-		return
+	}
+}
+
+fn (mut app App) serve_embed(req string, mut res phttp.Response) {
+	if app.cache_embed == none {
+		rows := app.raw_query('select created_at, tags from posts order by created_at desc limit 10;') or {
+			app.logln("/embed: failed ${err}")		
+			res.http_500()
+			res.end()
+			return
+		}
+
+		app.cache_embed = $tmpl('tmpl/embed.html')
+	}
+	
+	etag := app.etag(req)
+	res.http_ok()
+	res.header_date()
+	res.html()
+	res.write_string('ETag: "${etag}"\r\n')
+	res.write_string('Cache-Control: max-age=0, must-revalidate\r\n')
+
+	if cache_embed := app.cache_embed {
+		write_all(mut res, cache_embed)
 	}
 }
 
@@ -328,12 +361,12 @@ fn construct_article_header(created_at i64, latest i64, selected ?i64) string {
 	return ret + '>'
 }
 
-fn construct_tags(post &Post) string {
-	if post.tags == '' {
+fn construct_tags(tags string) string {
+	if tags == '' {
 		return ''
 	}
 	
-	return fmt_tag(post.tags.split(' '))
+	return fmt_tag(tags.split(' '))
 }
 
 fn construct_tags_query(tags []string) string {
@@ -716,7 +749,6 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 		latest_post_unix = latest_post_unix_rows[0].vals[0].i64()
 	}
 
-
 	mut selected_post_idx := -1
 	mut meta_description := ''
 	mut meta_image_url := ?string(none)
@@ -724,7 +756,7 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 		for idx, p in posts {
 			if p.created_at.unix == sel {
 				selected_post_idx = idx 
-				meta_description = construct_tags(posts[selected_post_idx])
+				meta_description = construct_tags(posts[selected_post_idx].tags)
 
 				img := (query as PostQuery).img
 
@@ -837,6 +869,9 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 		} else if req.path == '/' || req.path.starts_with( '/?') {
 			app.serve_home(req.path, is_authed, mut res)
 			return
+		} else if req.path == '/embed' {
+			app.serve_embed(req.path, mut res)
+			return
 		} else if req.path == '/index.xml' {
 			app.serve_rss(mut res)
 			return
@@ -895,9 +930,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 			sql app.db {
 				delete from Post where created_at == post_created_at
 			} or {
-				res.write_string('HTTP/1.1 400 Bad Request\r\n')
-				res.header_date()
-				res.write_string('Content-Length: 0\r\n\r\n')
+				res.http_404()
 				res.end()
 				return
 			}
