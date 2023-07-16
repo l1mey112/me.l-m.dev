@@ -808,7 +808,7 @@ fn see_other(location string, mut res phttp.Response) {
 
 fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 	mut app := unsafe { &App(data) }
-	mut is_authed := true
+	mut is_authed := false
 	mut etag := ?u64(none)
 
 	// atomic prepare request, used for etag cache
