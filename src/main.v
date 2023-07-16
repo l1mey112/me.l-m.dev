@@ -834,8 +834,13 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 			str := hdr.value
 
 			if str.len >= 3 {
-				// "x"
-				etag = str[1..str.len - 1].u64()
+				if str[0] == `W` && str[1] == `/` && str[2] == `"` {
+					if str.len >= 4 {
+						etag = str[3..str.len - 1].u64()
+					}
+				} else if str[0] == `"` {
+					etag = str[1..str.len - 1].u64()
+				}
 			}
 		}
 	}
