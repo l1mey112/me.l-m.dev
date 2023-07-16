@@ -568,10 +568,7 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 			return
 		}
 		unix := time.unix(i64(strconv.parse_uint(req[7..], 10, 64) or {
-			res.write_string('HTTP/1.1 400 Bad Request\r\n')
-			res.header_date()
-			res.write_string('Content-Length: 0\r\n\r\n')
-			res.end()
+			unsafe { goto bad_req }
 			return
 		}))
 
@@ -609,18 +606,12 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 			val := kv[1]
 			if key == 'p' {
 				post.post = i64(strconv.parse_uint(val, 10, 64) or {
-					res.write_string('HTTP/1.1 400 Bad Request\r\n')
-					res.header_date()
-					res.write_string('Content-Length: 0\r\n\r\n')
-					res.end()
+					unsafe { goto bad_req }
 					return
 				})
 			} else if key == 'img' {
 				post.img = i64(strconv.parse_uint(val, 10, 64) or {
-					res.write_string('HTTP/1.1 400 Bad Request\r\n')
-					res.header_date()
-					res.write_string('Content-Length: 0\r\n\r\n')
-					res.end()
+					unsafe { goto bad_req }
 					return
 				})
 			}
@@ -786,6 +777,12 @@ fn (mut app App) serve_home(req string, is_authed bool, mut res phttp.Response) 
 		res.write_string('Cache-Control: no-cache, no-store\r\n')
 		write_all(mut res, tmpl)
 	}
+	return
+bad_req:
+	res.write_string('HTTP/1.1 400 Bad Request\r\n')
+	res.header_date()
+	res.write_string('Content-Length: 0\r\n\r\n')
+	res.end()
 }
 
 fn forbidden_go_auth(mut res phttp.Response) {
@@ -811,7 +808,7 @@ fn see_other(location string, mut res phttp.Response) {
 
 fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 	mut app := unsafe { &App(data) }
-	mut is_authed := false
+	mut is_authed := true
 	mut etag := ?u64(none)
 
 	// atomic prepare request, used for etag cache
@@ -858,10 +855,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 	if req.method == 'GET' {
 		if req.path.starts_with('/?meta=') {
 			v := i64(strconv.parse_uint(req.path[7..], 10, 64) or {
-				res.write_string('HTTP/1.1 400 Bad Request\r\n')
-				res.header_date()
-				res.write_string('Content-Length: 0\r\n\r\n')
-				res.end()
+				unsafe { goto bad_req }
 				return
 			})
 			moved_permanently("/?p=${v}##", mut res)
@@ -902,14 +896,14 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 			}
 
 			file := "backup/backup_${time.now().unix}.sqlite"
-			query := "vacuum into '${file}'"
-			ret := app.db.exec_none(query)
-			if sqlite.is_error(ret) {
-				app.logln("/backup: failed ${app.db.error_message(ret, query)}")
+
+			app.raw_query("vacuum into '${file}'") or {
+				app.logln("/backup: failed ${err}")
 				res.http_500()
 				res.end()
 				return
 			}
+			
 			app.logln("/backup: created '${file}'")
 			see_other('/', mut res)
 			return
@@ -920,16 +914,18 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 			}
 
 			post_created_at := time.unix(i64(strconv.parse_uint(req.path[8..], 10, 64) or {
-				res.write_string('HTTP/1.1 400 Bad Request\r\n')
-				res.header_date()
-				res.write_string('Content-Length: 0\r\n\r\n')
-				res.end()
+				unsafe { goto bad_req }
 				return
 			}))
 
-			sql app.db {
-				delete from Post where created_at == post_created_at
-			} or {
+			app.raw_query('delete from posts where created_at = ${post_created_at.unix}') or {
+				app.logln("/delete: failed ${err}")
+				res.http_500()
+				res.end()
+				return
+			}
+
+			if app.db.get_affected_rows_count() == 0 {
 				res.http_404()
 				res.end()
 				return
@@ -978,10 +974,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 
 			// body contains urlencoded data
 			post, _ := get_post(req.body) or {
-				res.write_string('HTTP/1.1 400 Bad Request\r\n')
-				res.header_date()
-				res.write_string('Content-Length: 0\r\n\r\n')
-				res.end()
+				unsafe { goto bad_req }
 				return
 			}
 
@@ -1025,6 +1018,12 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 		res.http_405()
 		res.end()
 	}
+	return
+bad_req:
+	res.write_string('HTTP/1.1 400 Bad Request\r\n')
+	res.header_date()
+	res.write_string('Content-Length: 0\r\n\r\n')
+	res.end()
 }
 
 // -d trace_orm
