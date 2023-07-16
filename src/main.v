@@ -937,7 +937,7 @@ fn callback(data voidptr, req phttp.Request, mut res phttp.Response) {
 			if row := app.db.exec_one('select created_at from posts where created_at > ${post_created_at.unix} order by created_at limit 1') {
 				nearest_created_at := row.vals[0].int() // created_at
 				if nearest_created_at != 0 {
-					see_other('/#${nearest_created_at}', mut res)
+					see_other('/?p=${nearest_created_at}##', mut res)
 					return
 				}
 			}
