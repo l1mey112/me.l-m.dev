@@ -324,7 +324,7 @@ fn (mut app App) serve_embed(req string, mut res phttp.Response) {
 			return
 		}
 
-		app.cache_embed = $tmpl('tmpl/embed.html')
+		app.cache_embed = $tmpl('tmpl/embed_tmpl.html')
 	}
 	
 	etag := app.etag(req)
