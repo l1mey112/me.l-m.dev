@@ -260,11 +260,8 @@ fn (app &App) raw_query(query string) ![]sqlite.Row {
 	$if trace_orm ? {
 		eprintln('raw_query: ' + query)
 	}
-	rows, ret := app.db.exec(query)
 
-	if sqlite.is_error(ret) {
-		return app.db.error_message(ret, query)
-	}
+	rows := app.db.exec(query)!
 
 	return rows
 }
