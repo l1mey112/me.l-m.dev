@@ -192,6 +192,10 @@
 		display: flex;
 		justify-content: space-between;
 	}
+	audio {
+		width: 100%;
+		max-height: 3em;
+	}
 	/** remove the ugly rounded border */
 	audio,
 	audio::-webkit-media-controls-enclosure {
@@ -240,8 +244,9 @@
 	audio::-webkit-media-controls-volume-slider,
 	audio::-webkit-media-controls-volume-control-container,
 	audio::-webkit-media-controls-mute-button {
-	    filter: brightness(0) invert(1);
-	    color: white;
+		filter: brightness(0) invert(1);
+		color: white;
+		opacity: 1;
 	}
 
 	/** remove shadow around the remaining time (1:00 / 1:00) */

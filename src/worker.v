@@ -14,15 +14,7 @@ fn (mut app App) worker() {
 	mut payload := unsafe { Status{} }
 	
 	for {
-		mut sel := false
-
-		select {
-			payload = <-app.ch {
-				sel = true
-			}
-		}
-
-		if !sel { continue }
+		payload = <-app.ch
 
 		match payload {
 			YT_ID {
