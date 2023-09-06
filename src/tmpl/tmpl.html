@@ -71,7 +71,7 @@
 	}
 	.cnt {
 		display: flex;
-        justify-content: space-between;
+	justify-content: space-between;
 		color: #b3b8c3;
 	}
 	.cc {
@@ -192,45 +192,62 @@
 		display: flex;
 		justify-content: space-between;
 	}
-	audio {
-		width: 100%;
-		max-height: 3em;
-	}
-	
 	/** remove the ugly rounded border */
-	audio, audio::-webkit-media-controls-enclosure {
-		border-radius: 0;
+	audio,
+	audio::-webkit-media-controls-enclosure {
+	    border-radius: 0;
+	    font-family: monospace;
 	}
+
 	/** change the tap color so its ok on mobile + change text color */
-	audio::-webkit-media-controls-volume-slider, audio::-webkit-media-controls-mute-button {
-		-webkit-tap-highlight-color: white;
-		color: white;
+	audio::-webkit-media-controls-volume-slider,
+	audio::-webkit-media-controls-mute-button {
+	    -webkit-tap-highlight-color: white !important;
+	    color: white !important;
 	}
+
 	/** flip the colors forcefully using a filter */
-	audio::-webkit-media-controls-play-button, audio::-webkit-media-controls-volume-slider, audio::-webkit-media-controls-volume-control-hover-background {
-		filter: brightness(0) invert(1);
+	audio::-webkit-media-controls-play-button,
+	audio::-webkit-media-controls-volume-slider,
+	audio::-webkit-media-controls-volume-control-hover-background {
+	    filter: brightness(0) invert(1) !important;
 	}
+
 	/** override the image to the light mode version */
 	audio::-webkit-media-controls-mute-button {
-		background-image: url(data:image/svg+xml;base64,PHN2ZyBmaWxsPSJXaW5kb3ciIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogICAgPHBhdGggZD0iTTMgOXY2aDRsNSA1VjRMNyA5SDN6bTEzLjUgM2MwLTEuNzctMS4wMi0zLjI5LTIuNS00LjAzdjguMDVjMS40OC0uNzMgMi41LTIuMjUgMi41LTQuMDJ6TTE0IDMuMjN2Mi4wNmMyLjg5Ljg2IDUgMy41NCA1IDYuNzFzLTIuMTEgNS44NS01IDYuNzF2Mi4wNmM0LjAxLS45MSA3LTQuNDkgNy04Ljc3cy0yLjk5LTcuODYtNy04Ljc3eiIvPgogICAgPHBhdGggZD0iTTAgMGgyNHYyNEgweiIgZmlsbD0ibm9uZSIvPgo8L3N2Zz4K) !important;
+	    background-image: url(data:image/svg+xml;base64,PHN2ZyBmaWxsPSJXaW5kb3ciIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogICAgPHBhdGggZD0iTTMgOXY2aDRsNSA1VjRMNyA5SDN6bTEzLjUgM2MwLTEuNzctMS4wMi0zLjI5LTIuNS00LjAzdjguMDVjMS40OC0uNzMgMi41LTIuMjUgMi41LTQuMDJ6TTE0IDMuMjN2Mi4wNmMyLjg5Ljg2IDUgMy41NCA1IDYuNzFzLTIuMTEgNS44NS01IDYuNzF2Mi4wNmM0LjAxLS45MSA3LTQuNDkgNy04Ljc3cy0yLjk5LTcuODYtNy04Ljc3eiIvPgogICAgPHBhdGggZD0iTTAgMGgyNHYyNEgweiIgZmlsbD0ibm9uZSIvPgo8L3N2Zz4K) !important;
 	}
+
 	/** flip the timeline color to make the timeline bar look ok */
 	audio::-webkit-media-controls-timeline {
-		filter: brightness(0) invert(1);
+	    filter: brightness(0) invert(1);
 	}
+
 	audio::-webkit-media-controls-panel {
-		background: black;
-		border-radius: 0;
-		border: none;
+	    background: #1d1e1e;
+	    border-radius: 0;
+	    border: none;
 	}
+
 	audio::-webkit-media-controls-timeline {
-		color: white;
-		filter: brightness(0) invert(1);
+	    color: white !important;
+	    filter: brightness(0) invert(1);
 	}
+
 	/** more forceful color flipping abusing filter */
-	audio::-webkit-media-controls-time-remaining-display, audio::-webkit-media-controls-current-time-display, audio::-webkit-media-controls-volume-slider {
-		filter: brightness(0) invert(1);
-		color: white;
+	audio::-webkit-media-controls-time-remaining-display,
+	audio::-webkit-media-controls-current-time-display,
+	audio::-webkit-media-controls-volume-slider,
+	audio::-webkit-media-controls-volume-control-container,
+	audio::-webkit-media-controls-mute-button {
+	    filter: brightness(0) invert(1);
+	    color: white;
+	}
+
+	/** remove shadow around the remaining time (1:00 / 1:00) */
+	audio::-webkit-media-controls-time-remaining-display,
+	audio::-webkit-media-controls-current-time-display {
+	    text-shadow: none;
 	}
 </style>
 
